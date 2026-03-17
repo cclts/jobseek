@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { GitHubIcon } from "@/components/icons/GitHubIcon";
 import { authClient } from "@/lib/auth-client";
+import { isReservedUsername } from "@/lib/username";
 import { useAuth } from "@/lib/useAuth";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { setPassword as setPasswordAction, recordPasswordResetRequest, getAccountPageData } from "@/lib/actions/preferences";
@@ -183,6 +184,134 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
             ? t({ id: "settings.account.password.cooldown", comment: "Reset password button during cooldown with seconds remaining", message: `Resend in ${cooldown}s` })
             : t({ id: "settings.account.password.send", comment: "Reset password button", message: "Send reset link" })}
       </Button>
+    </section>
+  );
+}
+
+/* ── Username ── */
+
+const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
+
+function UsernameSection({ currentUsername }: { currentUsername: string }) {
+  const { t } = useLingui();
+  const [savedUsername, setSavedUsername] = useState(currentUsername);
+  const [value, setValue] = useState(currentUsername);
+  const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const normalized = value.toLowerCase().trim();
+  const unchanged = normalized === savedUsername;
+  const tooShort = normalized.length < 3;
+  const tooLong = normalized.length > 30;
+  const invalidChars = normalized.length >= 3 && !USERNAME_RE.test(normalized);
+  const reserved = !invalidChars && normalized.length >= 3 && isReservedUsername(normalized);
+
+  function handleChange(raw: string) {
+    const v = raw.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    setValue(v);
+    setError("");
+    setSuccess("");
+    setAvailable(null);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const norm = v.trim();
+    if (norm === savedUsername || norm.length < 3 || norm.length > 30 || !USERNAME_RE.test(norm) || isReservedUsername(norm)) return;
+
+    setChecking(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await authClient.isUsernameAvailable({ username: norm });
+        setAvailable(!!(res.data as unknown as { available: boolean })?.available);
+      } catch {
+        setAvailable(null);
+      }
+      setChecking(false);
+    }, 400);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (unchanged || tooShort || tooLong || invalidChars || reserved || available === false) return;
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    const { error } = await authClient.updateUser({ username: normalized });
+    setLoading(false);
+    if (error) {
+      setError(error.message ?? t({ id: "settings.account.username.error", comment: "Generic username update error", message: "Failed to update username" }));
+    } else {
+      setSavedUsername(normalized);
+      setAvailable(null);
+      setSuccess(t({ id: "settings.account.username.success", comment: "Username updated success message", message: "Username updated." }));
+    }
+  }
+
+  // hint is derived from the validated flags above (which already use savedUsername)
+  const hint = unchanged
+    ? null
+    : tooShort
+      ? t({ id: "settings.account.username.tooShort", comment: "Username too short hint", message: "At least 3 characters" })
+      : tooLong
+        ? t({ id: "settings.account.username.tooLong", comment: "Username too long hint", message: "At most 30 characters" })
+        : invalidChars
+          ? t({ id: "settings.account.username.invalidChars", comment: "Username invalid characters hint", message: "Only lowercase letters, numbers, and hyphens (cannot start/end with hyphen)" })
+          : reserved
+            ? t({ id: "settings.account.username.reserved", comment: "Username is reserved hint", message: "This username is reserved" })
+            : checking
+            ? t({ id: "settings.account.username.checking", comment: "Checking username availability", message: "Checking availability..." })
+            : available === true
+              ? t({ id: "settings.account.username.available", comment: "Username is available", message: "Available" })
+              : available === false
+                ? t({ id: "settings.account.username.taken", comment: "Username is taken", message: "Already taken" })
+                : null;
+
+  return (
+    <section>
+      <h3 className="mb-1 text-base font-semibold">
+        <Trans id="settings.account.username.title" comment="Username section heading">Username</Trans>
+      </h3>
+      <p className="mb-4 text-sm text-muted">
+        <Trans id="settings.account.username.description" comment="Username section description">
+          Your unique handle used in your public profile URL.
+        </Trans>
+      </p>
+      <ErrorAlert message={error} />
+      <form onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
+          <div className="flex-1">
+            <FormField
+              label={t({ id: "settings.account.username.label", comment: "Username input label", message: "Username" })}
+              required
+              autoComplete="username"
+              value={value}
+              onChange={(e) => handleChange(e.target.value)}
+              maxLength={30}
+            />
+          </div>
+          <Button type="submit" disabled={loading || unchanged || tooShort || tooLong || invalidChars || reserved || available === false || checking} size="sm">
+            {loading
+              ? t({ id: "settings.account.username.saving", comment: "Username save button while loading", message: "Saving..." })
+              : t({ id: "settings.account.username.save", comment: "Username save button", message: "Update username" })}
+          </Button>
+        </div>
+        {hint && (
+          <p className={`mt-1 text-xs ${available === true ? "text-green-600 dark:text-green-400" : available === false || invalidChars || tooShort || tooLong || reserved ? "text-error" : "text-muted"}`}>
+            {hint}
+          </p>
+        )}
+        {success && <div className="mt-3"><SuccessAlert message={success} /></div>}
+      </form>
     </section>
   );
 }
@@ -397,6 +526,7 @@ function DeleteAccountSection() {
 type AccountPageData = {
   accounts: ConnectedAccount[];
   hasPassword: boolean;
+  username: string;
 } | null;
 
 /* ── Main Component ── */
@@ -422,6 +552,7 @@ export function AccountSettings({ initialData }: { initialData?: AccountPageData
 
   return (
     <div className="space-y-10">
+      <UsernameSection currentUsername={initialData.username} />
       <PasswordSection hasPassword={hasPassword} initialCooldown={0} onPasswordSet={refreshAccounts} />
       <ChangeEmailSection />
       <ConnectedAccountsSection accounts={accounts} onDisconnect={handleDisconnect} />

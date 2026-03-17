@@ -1,12 +1,15 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
+import { username } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
 import { sendVerificationEmail, sendResetPasswordEmail } from "@/lib/email";
 import { type Locale, defaultLocale, isLocale } from "@/lib/i18n";
 import { invalidateSessionCache } from "@/lib/sessionCache";
+import { sql } from "drizzle-orm";
+import { usernameFromEmail, withRandomSuffix, isReservedUsername } from "@/lib/username";
 
 function localeFromRequest(request?: Request): Locale {
   const referer = request?.headers.get("referer") ?? "";
@@ -83,5 +86,40 @@ export const auth = betterAuth({
       }
     }),
   },
-  plugins: [nextCookies()],
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          if (!user.email) return { data: user };
+
+          const provided = (user as Record<string, unknown>).username as string | undefined;
+          let candidate = provided || usernameFromEmail(user.email);
+
+          // Always verify uniqueness + blocklist, suffix if needed
+          const base = usernameFromEmail(user.email);
+          for (let i = 0; i < 5; i++) {
+            if (isReservedUsername(candidate)) {
+              candidate = withRandomSuffix(base);
+              continue;
+            }
+            const rows = await db.execute(
+              sql`SELECT 1 FROM "user" WHERE username = ${candidate} LIMIT 1`,
+            );
+            if (!rows.length) break;
+            candidate = withRandomSuffix(base);
+          }
+
+          return { data: { ...user, username: candidate, displayUsername: candidate } };
+        },
+      },
+    },
+  },
+  plugins: [
+    username({
+      minUsernameLength: 3,
+      maxUsernameLength: 30,
+      usernameValidator: (username) => /^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(username),
+    }),
+    nextCookies(),
+  ],
 });

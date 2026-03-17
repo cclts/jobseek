@@ -191,6 +191,7 @@ export async function getAccountPageData() {
   return {
     accounts: accounts.map((a) => ({ providerId: a.providerId, accountId: a.accountId })),
     hasPassword: accounts.some((a) => a.providerId === "credential"),
+    username: ((session.user as Record<string, unknown>).username as string | null) ?? "",
   };
 }
 

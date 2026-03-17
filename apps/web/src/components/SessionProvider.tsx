@@ -8,6 +8,8 @@ type SessionUser = {
   name: string;
   image?: string | null;
   emailVerified: boolean;
+  username?: string | null;
+  displayUsername?: string | null;
 };
 
 type SessionContextValue = {

@@ -9,6 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { getPreferences, updatePreferences } from "@/lib/actions/preferences";
 import { localPrefs } from "@/lib/preference-timestamps";
+import { usernameFromEmail } from "@/lib/username";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -57,6 +58,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         name,
         email,
         password,
+        username: usernameFromEmail(email),
         callbackURL: dashboardUrl,
       });
       if (error) {
@@ -70,11 +72,17 @@ export function AuthForm({ mode }: AuthFormProps) {
       }
       goToCheckEmail();
     } else {
-      const { error } = await authClient.signIn.email({
-        email,
-        password,
-        callbackURL: dashboardUrl,
-      });
+      const isUsername = !email.includes("@");
+      const { error } = isUsername
+        ? await authClient.signIn.username({
+            username: email,
+            password,
+          })
+        : await authClient.signIn.email({
+            email,
+            password,
+            callbackURL: dashboardUrl,
+          });
       if (error) {
         if (error.status === 403) {
           goToCheckEmail();
@@ -161,10 +169,12 @@ export function AuthForm({ mode }: AuthFormProps) {
           />
         )}
         <FormField
-          label={t({ id: "auth.field.email", comment: "Email input label", message: "Email" })}
-          type="email"
+          label={isSignUp
+            ? t({ id: "auth.field.email", comment: "Email input label", message: "Email" })
+            : t({ id: "auth.field.emailOrUsername", comment: "Email or username input label for sign-in", message: "Email or username" })}
+          type={isSignUp ? "email" : "text"}
           required
-          autoComplete="email"
+          autoComplete={isSignUp ? "email" : "username email"}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="mb-4"
