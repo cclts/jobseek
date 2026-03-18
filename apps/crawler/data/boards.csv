@@ -36,6 +36,7 @@ instories,instories-careers,https://wantapply.com/company/instories,dom,"{""rend
 isomorphic-labs,isomorphic-labs-careers,https://job-boards.greenhouse.io/isomorphiclabs,greenhouse,"{""token"": ""isomorphiclabs""}",skip,
 jetbrains,jetbrains-careers,https://boards.greenhouse.io/jetbrains,greenhouse,,,
 julius-baer,julius-baer-careers,https://juliusbaer.wd3.myworkdayjobs.com/External,workday,,,
+kayak,kayak-careers,https://job-boards.greenhouse.io/kayak,greenhouse,"{""token"": ""kayak""}",skip,
 kodland,kodland-careers,https://kodland.pinpointhq.com,pinpoint,"{""slug"": ""kodland""}",,
 kpmg,kpmg-at,https://bewerbung.kpmg.at,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://bewerbung.kpmg.at/googlefeed.xml""}",,
 kpmg,kpmg-au,https://careers.smartrecruiters.com/KPMGAustralia1,smartrecruiters,"{""token"": ""KPMGAustralia1""}",,
