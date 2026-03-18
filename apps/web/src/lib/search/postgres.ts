@@ -251,7 +251,7 @@ export class PostgresSearchProvider implements SearchProvider {
           jp.location_ids, jp.location_types,
           (${keywordCountExpr("", "jp.titles[1]", keywords)}) AS keyword_count
         FROM job_posting jp
-        WHERE jp.is_active = true
+        WHERE (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${matchOr("jp", keywords)})
           AND (${languageFilter("jp", languages)})
@@ -267,15 +267,15 @@ export class PostgresSearchProvider implements SearchProvider {
           pm.company_id,
           COUNT(*) FILTER (WHERE pm.is_active) AS active_matches,
           COUNT(*) FILTER (WHERE pm.first_seen_at >= now() - interval '1 year') AS year_matches,
-          MAX(pm.keyword_count) AS best_keyword_count
+          MAX(pm.keyword_count) FILTER (WHERE pm.is_active) AS best_keyword_count
         FROM posting_matches pm
         GROUP BY pm.company_id
+        HAVING COUNT(*) FILTER (WHERE pm.is_active) > 0
         ORDER BY best_keyword_count DESC, active_matches DESC, year_matches DESC, pm.company_id
         LIMIT ${limit} OFFSET ${offset}
       ),
       total AS (
-        SELECT COUNT(DISTINCT pm.company_id) AS cnt
-        FROM posting_matches pm
+        SELECT COUNT(*) AS cnt FROM (SELECT DISTINCT pm.company_id FROM posting_matches pm WHERE pm.is_active) sub
       )
       SELECT
         mc.company_id,
@@ -300,6 +300,7 @@ export class PostgresSearchProvider implements SearchProvider {
           pm2.location_ids, pm2.location_types
         FROM posting_matches pm2
         WHERE pm2.company_id = mc.company_id
+          AND pm2.is_active = true
         ORDER BY pm2.keyword_count DESC, pm2.first_seen_at DESC
         LIMIT 10
       ) p ON true
@@ -328,7 +329,7 @@ export class PostgresSearchProvider implements SearchProvider {
           COUNT(*) FILTER (WHERE jp.is_active) AS active_matches,
           COUNT(*) FILTER (WHERE jp.first_seen_at >= now() - interval '1 year') AS year_matches
         FROM job_posting jp
-        WHERE jp.is_active = true
+        WHERE (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${languageFilter("jp", languages)})
           AND (${locationFilter("jp", locationIds)})
@@ -338,6 +339,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
         GROUP BY jp.company_id
+        HAVING COUNT(*) FILTER (WHERE jp.is_active) > 0
       ),
       top_companies AS (
         SELECT * FROM all_companies
@@ -510,7 +512,7 @@ export class PostgresSearchProvider implements SearchProvider {
         COUNT(*) FILTER (WHERE jp.first_seen_at >= now() - interval '1 year') AS year_count
       FROM job_posting jp
       WHERE jp.company_id = ${companyId}
-        AND jp.is_active = true
+        AND (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
         AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
         AND (${languageFilter("jp", languages)})
         ${keywords.length > 0 ? sql`AND (${matchOr("jp", keywords)})` : sql``}
