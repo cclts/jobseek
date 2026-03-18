@@ -108,6 +108,7 @@ toloka,toloka-careers,https://toloka.ai/careers,greenhouse,"{""token"": ""toloka
 twine,twine-careers,https://jobs.ashbyhq.com/twine,ashby,"{""token"": ""twine""}",skip,
 twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""token"": ""twitch""}",,
 uniqlo,uniqlo-careers-workday,https://fastretailing.wd3.myworkdayjobs.com/graduates_eu_Uniqlo,workday,,,
+universal-music,universal-music-careers,https://umusic.wd5.myworkdayjobs.com/UMGUS,workday,"{""company"": ""umusic"", ""wd_instance"": ""wd5"", ""site"": ""UMGUS""}",json-ld,
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,,
 upvest,upvest-careers,https://jobs.ashbyhq.com/upvest,ashby,,skip,
 valtech,valtech-careers,https://www.valtech.com/career/jobs/,greenhouse,"{""token"": ""valtech""}",,
