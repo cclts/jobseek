@@ -19,7 +19,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 
-ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/VERSION"
+ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/VERSION"
 VALID_MONITOR_TYPES="$(
 python3 - "$REPO_ROOT" <<'PY'
 import sys
@@ -36,7 +36,7 @@ PY
 VALID_SCRAPER_TYPES="json-ld|dom|nextdata|embedded|api_sniffer"
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
-MAX_ADDED_LINES=5
+MAX_ADDED_LINES=6
 
 # --- Check changed files ---
 
@@ -74,7 +74,7 @@ DIFF=$(gh pr diff "$PR" --repo "$REPO")
 CSV_DIFF=$(echo "$DIFF" | awk '
   BEGIN { in_csv = 0 }
   /^diff --git / {
-    in_csv = ($0 ~ /^diff --git a\/apps\/crawler\/data\/(companies|boards)\.csv b\/apps\/crawler\/data\/(companies|boards)\.csv$/)
+    in_csv = ($0 ~ /^diff --git a\/apps\/crawler\/data\/(companies|boards|company_descriptions)\.csv b\/apps\/crawler\/data\/(companies|boards|company_descriptions)\.csv$/)
   }
   in_csv { print }
 ')
@@ -114,14 +114,15 @@ while IFS= read -r line; do
   PARSED=$(parse_csv_line "$content")
   FIELD_COUNT=$(echo "$PARSED" | awk -F'\t' '{print NF}')
 
-  if [ "$FIELD_COUNT" -ne 6 ] && [ "$FIELD_COUNT" -ne 7 ]; then
+  if [ "$FIELD_COUNT" -ne 7 ] && [ "$FIELD_COUNT" -ne 10 ]; then
+    # 7 = boards.csv, 10 = companies.csv (slug,name,website,logo_url,icon_url,logo_type,industry,employee_count_range,founded_year,extras)
     echo "::warning::Unexpected field count ($FIELD_COUNT): $content"
     DIFF_OK=false
     continue
   fi
 
-  if [ "$FIELD_COUNT" -eq 6 ]; then
-    # companies.csv: slug,name,website,logo_url,icon_url,logo_type
+  if [ "$FIELD_COUNT" -eq 10 ]; then
+    # companies.csv
     SLUG=$(echo "$PARSED" | cut -d$'\t' -f1)
     WEBSITE=$(echo "$PARSED" | cut -d$'\t' -f3)
 
