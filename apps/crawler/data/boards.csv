@@ -62,6 +62,7 @@ nexthink,nexthink-careers,https://nexthink.com/company/careers/jobs,smartrecruit
 notion,notion-careers,https://jobs.ashbyhq.com/notion,ashby,"{""token"": ""notion""}",,
 openai,openai-careers,https://jobs.ashbyhq.com/openai,ashby,"{""token"": ""openai""}",skip,
 patek-philippe,patek-philippe-careers,https://careers.patek.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.patek.com/googlefeed.xml""}",,
+peec-ai,peec-ai-careers,https://jobs.ashbyhq.com/peec,ashby,,skip,
 perplexity-ai,perplexity-ai-careers,https://jobs.ashbyhq.com/perplexity,ashby,,,
 physical-intelligence,physical-intelligence-careers,https://jobs.ashbyhq.com/physicalintelligence,ashby,"{""token"": ""physicalintelligence""}",skip,
 playkot,playkot-careers,https://playkot.com/jobs,dom,"{""url_filter"": ""playkot\\.com/vacancy/[a-z0-9_-]+(?:[/?#].*)?$""}",dom,"{""steps"": [{""tag"": ""h2"", ""attr"": ""class=vacancy-page-title__title"", ""field"": ""title""}, {""text"": ""Open to remote"", ""field"": ""job_location_type"", ""regex"": ""(remote|onsite|hybrid)"", ""optional"": true}, {""text"": ""Open to remote"", ""field"": ""locations"", ""regex"": ""([Rr]emote)"", ""optional"": true, ""from"": 0}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Apply for position"", ""html"": true}]}"
