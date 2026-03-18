@@ -36,6 +36,23 @@ Manual source inspection is optional in this phase; start with crawler evidence 
 
 ## Discover board URLs
 
+### Hreflang regional variants
+
+Career discovery extracts `<link rel="alternate" hreflang="...">` tags from page
+headers. These reveal regional career page variants. Interpret the results:
+
+- **Many career-path variants + distinct hosts** → separate regional boards are
+  needed (e.g. Accenture with 55 region-specific APIs)
+- **Many career-path variants + same host** → may be a centralized ATS (one
+  board) or separate regional data behind one domain (separate boards needed)
+  — probe one region to check
+- **Few or zero career-path variants** → ignore hreflang; use other discovery signals
+
+The discovery output shows an "Hreflang regional variants" summary with counts
+and a centralized-ATS warning when applicable.
+
+### Manual discovery
+
 Starting from the company's careers page, look for:
 - Language/region switcher (EN | DE | FR tabs)
 - Separate URLs per region (`/en/careers`, `/de/careers`, `/us/jobs`)

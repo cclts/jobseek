@@ -545,6 +545,54 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
         "Interpretation: treat this as a hypothesis and verify visible listings/count parity.",
     )
 
+    # Hreflang summary
+    if state_path.exists():
+        try:
+            state = yaml.safe_load(state_path.read_text()) or {}
+            hreflang = state.get("hreflang") or {}
+            total = hreflang.get("total", 0)
+            career_count = hreflang.get("career_filtered", 0)
+            if total > 0:
+                hl_links = hreflang.get("links") or []
+                regions = sorted({hl.get("hreflang", "") for hl in hl_links if hl.get("hreflang")})
+                preview = ", ".join(regions[:10])
+                more = f" (+{len(regions) - 10} more)" if len(regions) > 10 else ""
+                print()
+                out.info(
+                    "careers",
+                    f"Hreflang regional variants: {total} declared, "
+                    f"{career_count} with career paths.",
+                )
+                if regions:
+                    out.plain("careers", f"  Regions: {preview}{more}")
+
+                # Centralized ATS noise detection
+                if career_count > 3:
+                    from urllib.parse import urlparse as _urlparse
+
+                    from src.workspace.career_discover import (  # noqa: I001
+                        _ATS_URL_RE,
+                        _CAREER_PATH_RE,
+                    )
+
+                    career_hosts = set()
+                    for hl in hl_links:
+                        u = hl.get("url", "")
+                        if not u:
+                            continue
+                        parsed = _urlparse(u)
+                        if _CAREER_PATH_RE.search(parsed.path) or _ATS_URL_RE.search(u):
+                            career_hosts.add(parsed.hostname)
+                    if len(career_hosts) == 1:
+                        out.plain(
+                            "careers",
+                            "ℹ All career hreflang URLs share the same host —"
+                            " probe one region to check\n"
+                            "  whether jobs differ before creating separate boards.",
+                        )
+        except Exception:
+            pass
+
 
 def _auto_enrich(ws: Workspace) -> None:
     """Auto-enrich company metadata from JSON-LD and Wikidata."""
@@ -1060,6 +1108,18 @@ def _show_discovery_evidence(slug: str, board_url: str) -> None:
             "Validate board relevance carefully.",
         )
 
+    # Check if board URL appears in hreflang links
+    hreflang = state.get("hreflang") or {}
+    hl_links = hreflang.get("links") or []
+    for hl in hl_links:
+        hl_url = hl.get("url", "")
+        if isinstance(hl_url, str) and _normalize_url(hl_url) == normalized:
+            out.plain(
+                "board",
+                f"Also declared as hreflang alternate for: {hl.get('hreflang', '?')}",
+            )
+            break
+
 
 @click.command(name="board")
 @click.argument("slug_or_alias")
@@ -1134,6 +1194,121 @@ def add_board(
     if board.job_link_pattern:
         out.plain("board", f"Job link pattern: {board.job_link_pattern}")
     out.plain("board", f"Active board: {board_slug} (alias: {alias})")
+
+
+@click.command(name="boards")
+@click.argument("slug", required=False)
+@click.option(
+    "--only", "only_codes", default=None, help="Comma-separated hreflang codes to include"
+)
+@click.option(
+    "--exclude", "exclude_codes", default=None, help="Comma-separated hreflang codes to exclude"
+)
+def add_boards(slug: str | None, only_codes: str | None, exclude_codes: str | None):
+    """Batch-create boards from hreflang regional variants."""
+    from urllib.parse import urlparse
+
+    import yaml
+
+    from src.workspace.career_discover import _ATS_URL_RE, _CAREER_PATH_RE
+    from src.workspace.state import ws_dir
+
+    slug = resolve_slug(slug)
+    if not workspace_exists(slug):
+        out.die(f"Workspace {slug!r} not found")
+
+    state_path = ws_dir(slug) / "discovery.state.yaml"
+    if not state_path.exists():
+        out.die("No discovery state found. Run 'ws discover' first to extract hreflang data.")
+
+    state = yaml.safe_load(state_path.read_text())
+    hl_data = state.get("hreflang") or {}
+    hl_links = hl_data.get("links") or []
+    if not hl_links:
+        out.die("No hreflang links in discovery state.")
+
+    homepage_url = state.get("homepage_url", "")
+
+    # Parse filter sets
+    only_set = {c.strip().lower() for c in only_codes.split(",")} if only_codes else None
+    exclude_set = {c.strip().lower() for c in exclude_codes.split(",")} if exclude_codes else set()
+
+    # Always exclude x-default
+    exclude_set.add("x-default")
+
+    # Deduplicate hreflang links by code: keep the shortest career-path URL
+    # per code (e.g. prefer /careers over /careers/life-at-accenture/benefits).
+    # This handles sites like Accenture that declare hreflang on every subpage.
+    code_best: dict[str, str] = {}  # code_lower → best URL
+    for hl in hl_links:
+        url = hl.get("url", "")
+        code = hl.get("hreflang", "")
+        if not url or not code:
+            continue
+        code_lower = code.lower()
+        if code_lower in exclude_set:
+            continue
+        if only_set and code_lower not in only_set:
+            continue
+        parsed = urlparse(url)
+        if not (_CAREER_PATH_RE.search(parsed.path) or _ATS_URL_RE.search(url)):
+            continue
+        # Skip homepage URL
+        if homepage_url and _normalize_url(url) == _normalize_url(homepage_url):
+            continue
+        # Keep shortest path per code (most specific listing page, not subpages)
+        if code_lower not in code_best or len(parsed.path) < len(
+            urlparse(code_best[code_lower]).path
+        ):
+            code_best[code_lower] = url
+
+    # Load existing board URLs for dedup
+    existing_urls = {_normalize_url(b.url) for b in list_boards(slug)}
+
+    ws_obj = load_workspace(slug)
+    results: list[tuple[str, str, str]] = []  # (alias, url, status)
+
+    for code_lower, url in sorted(code_best.items()):
+        alias = f"careers-{code_lower}"
+
+        # Check for duplicate URL
+        if _normalize_url(url) in existing_urls:
+            results.append((alias, url, "skipped-duplicate"))
+            continue
+
+        # Create board
+        board_slug_str = f"{slug}-{alias}"
+        board = Board(alias=alias, slug=board_slug_str, url=url)
+        save_board(slug, board)
+        existing_urls.add(_normalize_url(url))
+        results.append((alias, url, "created"))
+
+        # Log
+        action_log.append(
+            ws_log_path(slug),
+            "add board",
+            True,
+            f"Added board {alias} — {url} (batch hreflang)",
+        )
+
+    # Set active board to last created
+    created = [r for r in results if r[2] == "created"]
+    if created:
+        ws_obj.active_board = created[-1][0]
+        save_workspace(ws_obj)
+
+    # Print summary
+    created_count = sum(1 for r in results if r[2] == "created")
+    skipped_count = sum(1 for r in results if r[2].startswith("skipped"))
+    out.info("boards", f"Created {created_count} boards, skipped {skipped_count}")
+    print()
+    out.plain("boards", f"{'Alias':<24} {'Status':<20} URL")
+    for alias_or_code, url, status in results:
+        out.plain("boards", f"{alias_or_code:<24} {status:<20} {url}")
+
+    if created:
+        out.plain("boards", f"\nActive board: {ws_obj.active_board}")
+        out.plain("boards", "Next: ws probe monitor --all-boards -n <job-count>")
 
 
 @click.command(name="board")
