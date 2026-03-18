@@ -17,6 +17,7 @@ from src.core.monitors.nextdata import (
     can_handle,
     discover,
 )
+from src.shared.nextdata import extract_react_router_data
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -1004,3 +1005,202 @@ class TestJoinComConfig:
         pm = next(j for j in result if j.title == "Product Manager")
         assert pm.job_location_type == "remote"
         assert pm.base_salary is None  # no salary data on this job
+
+
+# ---------------------------------------------------------------------------
+# React Router hydration data tests
+# ---------------------------------------------------------------------------
+
+
+REACT_ROUTER_DATA = {
+    "loaderData": {
+        "search": {
+            "searchResults": [
+                {
+                    "positionId": "100001",
+                    "postingTitle": "Software Engineer",
+                    "transformedPostingTitle": "software-engineer",
+                    "postDateInGMT": "2026-03-15T10:00:00Z",
+                    "locations": [{"name": "Cupertino, CA"}],
+                    "team": {"teamName": "Engineering", "teamCode": "SFTWR"},
+                },
+                {
+                    "positionId": "100002",
+                    "postingTitle": "Product Designer",
+                    "transformedPostingTitle": "product-designer",
+                    "postDateInGMT": "2026-03-16T10:00:00Z",
+                    "locations": [{"name": "London"}, {"name": "Remote"}],
+                    "team": {"teamName": "Design", "teamCode": "DSGN"},
+                },
+            ],
+            "totalRecords": 2,
+        }
+    }
+}
+
+
+def _html_with_react_router(data: dict) -> str:
+    """Build HTML with React Router __staticRouterHydrationData."""
+    inner = json.dumps(json.dumps(data))  # double-encode
+    # inner is '"{\\"loaderData\\"...}"', we need the content without outer quotes
+    escaped = inner[1:-1]  # strip outer quotes from json.dumps
+    return (
+        f"<html><body><script>"
+        f'window.__staticRouterHydrationData = JSON.parse("{escaped}");'
+        f"</script></body></html>"
+    )
+
+
+REACT_ROUTER_HTML = _html_with_react_router(REACT_ROUTER_DATA)
+
+BOARD_REACT_ROUTER = {
+    "board_url": "https://example.com/search?page=1",
+    "metadata": {
+        "source": "reactrouter",
+        "path": "loaderData.search.searchResults",
+        "url_template": "https://example.com/details/{positionId}/{transformedPostingTitle}",
+        "fields": {
+            "title": "postingTitle",
+            "locations": "locations[].name",
+            "date_posted": "postDateInGMT",
+            "metadata.team": "team.teamName",
+        },
+    },
+}
+
+
+class TestExtractReactRouterData:
+    def test_valid_html(self):
+        data = extract_react_router_data(REACT_ROUTER_HTML)
+        assert data == REACT_ROUTER_DATA
+
+    def test_no_hydration_data(self):
+        assert extract_react_router_data("<html><body>No data</body></html>") is None
+
+    def test_invalid_json(self):
+        html = '<script>window.__staticRouterHydrationData = JSON.parse("{bad}");</script>'
+        assert extract_react_router_data(html) is None
+
+
+class TestReactRouterDiscover:
+    async def test_returns_rich_jobs(self):
+        async with httpx.AsyncClient(transport=_mock_transport(REACT_ROUTER_HTML)) as client:
+            result = await discover(BOARD_REACT_ROUTER, client)
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+    async def test_job_fields_mapped(self):
+        async with httpx.AsyncClient(transport=_mock_transport(REACT_ROUTER_HTML)) as client:
+            result = await discover(BOARD_REACT_ROUTER, client)
+
+        eng = next(j for j in result if j.title == "Software Engineer")
+        assert eng.url == "https://example.com/details/100001/software-engineer"
+        assert eng.locations == ["Cupertino, CA"]
+        assert eng.date_posted == "2026-03-15T10:00:00Z"
+        assert eng.metadata == {"team": "Engineering"}
+
+        designer = next(j for j in result if j.title == "Product Designer")
+        assert designer.locations == ["London", "Remote"]
+
+    async def test_url_only_mode(self):
+        board = {
+            "board_url": "https://example.com/search?page=1",
+            "metadata": {
+                "source": "reactrouter",
+                "path": "loaderData.search.searchResults",
+                "url_template": "https://example.com/details/{positionId}/{transformedPostingTitle}",
+            },
+        }
+        async with httpx.AsyncClient(transport=_mock_transport(REACT_ROUTER_HTML)) as client:
+            result = await discover(board, client)
+
+        assert isinstance(result, set)
+        assert len(result) == 2
+        assert "https://example.com/details/100001/software-engineer" in result
+
+    async def test_no_data_returns_empty(self):
+        html = "<html><body>No React Router data</body></html>"
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await discover(BOARD_REACT_ROUTER, client)
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Pagination with total_records / page_size
+# ---------------------------------------------------------------------------
+
+
+def _react_router_paginated_data(page: int, total: int, page_size: int = 2) -> dict:
+    start = (page - 1) * page_size
+    count = min(page_size, total - start)
+    items = [
+        {
+            "positionId": str(start + i),
+            "postingTitle": f"Job {start + i}",
+            "transformedPostingTitle": f"job-{start + i}",
+        }
+        for i in range(count)
+    ]
+    return {
+        "loaderData": {
+            "search": {
+                "searchResults": items,
+                "totalRecords": total,
+            }
+        }
+    }
+
+
+def _react_router_paginated_transport(total: int, page_size: int = 2):
+    def handler(request: httpx.Request):
+        from urllib.parse import parse_qs, urlparse
+
+        parsed = urlparse(str(request.url))
+        qs = parse_qs(parsed.query)
+        page = int(qs.get("page", ["1"])[0])
+        data = _react_router_paginated_data(page, total, page_size)
+        html = _html_with_react_router(data)
+        return httpx.Response(200, text=html)
+
+    return httpx.MockTransport(handler)
+
+
+BOARD_REACT_ROUTER_PAGINATED = {
+    "board_url": "https://example.com/search?page=1",
+    "metadata": {
+        "source": "reactrouter",
+        "path": "loaderData.search.searchResults",
+        "url_template": "https://example.com/details/{positionId}/{transformedPostingTitle}",
+        "pagination": {
+            "path": "loaderData.search",
+            "total_records": "totalRecords",
+            "page_size": 2,
+            "page_param": "page",
+        },
+    },
+}
+
+
+class TestTotalRecordsPagination:
+    async def test_multi_page(self):
+        """6 total records / page_size 2 = 3 pages."""
+        transport = _react_router_paginated_transport(total=6, page_size=2)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(BOARD_REACT_ROUTER_PAGINATED, client)
+        assert isinstance(result, set)
+        assert len(result) == 6
+
+    async def test_single_page(self):
+        """2 total / page_size 2 = 1 page, no extra fetches."""
+        transport = _react_router_paginated_transport(total=2, page_size=2)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(BOARD_REACT_ROUTER_PAGINATED, client)
+        assert len(result) == 2
+
+    async def test_partial_last_page(self):
+        """5 total / page_size 2 = 3 pages (last page has 1 item)."""
+        transport = _react_router_paginated_transport(total=5, page_size=2)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(BOARD_REACT_ROUTER_PAGINATED, client)
+        assert len(result) == 5

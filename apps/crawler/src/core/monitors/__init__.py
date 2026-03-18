@@ -443,6 +443,7 @@ from src.core.monitors import (  # noqa: E402
     ashby,  # noqa: F401
     bite,  # noqa: F401
     breezy,  # noqa: F401
+    deel,  # noqa: F401
     dom,  # noqa: F401
     dvinci,  # noqa: F401
     gem,  # noqa: F401

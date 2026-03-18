@@ -226,6 +226,28 @@ bite — BITE GmbH ATS (Job Search API, widget key auth)
   Detection:  ws probe shows "BITE API — customer: X, N jobs"
   Zero jobs?  Verify key — the listing JS may have changed format"""
 
+MONITOR_DEEL = """\
+deel — Deel ATS Job Board API
+
+  API:      Settings: GET /deelapi/guest/ats/organizations/{slug}/career_page_settings
+            Postings: GET /deelapi/guest/ats/organizations/{org_id}/
+                      job_boards/{board_id}/job_postings
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            date_posted, base_salary)
+            metadata: team, department, id
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+
+  Config:
+    {"slug": "klarna"}
+
+    slug       Company URL slug on jobs.deel.com. Auto-filled by ws probe from
+               the board URL (jobs.deel.com/{slug}).
+    org_id     Organization UUID. Auto-resolved from career_page_settings.
+    board_id   Job board UUID. Auto-resolved from career_page_settings.
+
+  Detection:  ws probe shows "Deel API — slug: X, N jobs"
+  Zero jobs?  Verify slug — try visiting jobs.deel.com/{slug} in a browser"""
+
 MONITOR_DVINCI = """\
 dvinci — d.vinci ATS (Public JSON API, no auth)
 
@@ -1474,6 +1496,7 @@ MONITOR_CARDS: dict[str, str] = {
     "apify_meta": MONITOR_APIFY_META,
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
+    "deel": MONITOR_DEEL,
     "dvinci": MONITOR_DVINCI,
     "gem": MONITOR_GEM,
     "greenhouse": MONITOR_GREENHOUSE,

@@ -30,8 +30,8 @@ Run `ws resume` to diagnose and retry.
 
 ## When done
 
-`ws submit` does not mark the PR ready for review — that happens in `ws task complete`
-(after KB reflections are pushed) to prevent the auto-merge workflow from racing.
+`ws submit` marks the PR ready for review after posting stats and transcript.
+This triggers the image upload CI workflow and enables auto-merge.
 
 `ws submit` does not auto-advance the task workflow. Advance it explicitly:
 

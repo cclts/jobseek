@@ -1,8 +1,10 @@
-"""Next.js __NEXT_DATA__ monitor.
+"""Embedded JSON monitor (Next.js, React Router, etc.).
 
-Extracts job listings from the ``<script id="__NEXT_DATA__">`` JSON blob
-that Next.js embeds in every server-rendered page.  Config maps the
-app-specific JSON structure to ``DiscoveredJob`` fields.
+Extracts job listings from embedded JSON blobs in server-rendered pages.
+Configurable via the ``source`` key:
+
+- ``"nextdata"`` (default) — ``<script id="__NEXT_DATA__">``
+- ``"reactrouter"`` — ``window.__staticRouterHydrationData``
 
 Supports two modes:
 - **Rich mode** (``fields`` configured): returns ``list[DiscoveredJob]``
@@ -18,6 +20,15 @@ pages and merges the results.  Config shape::
         "page_count": "pageCount",                  # field within that object
         "page_param": "page"                        # query-string parameter (default "page")
     }
+
+Alternative pagination using total_records + page_size (computes page_count)::
+
+    "pagination": {
+        "path": "loaderData.search",
+        "total_records": "totalRecords",
+        "page_size": 20,
+        "page_param": "page"
+    }
 """
 
 from __future__ import annotations
@@ -29,7 +40,13 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
-from src.shared.nextdata import extract_field, extract_next_data, resolve_path
+from src.shared.nextdata import (
+    extract_embedded_json,
+    extract_field,
+    extract_next_data,
+    extract_react_router_data,
+    resolve_path,
+)
 from src.shared.slug import slugify
 
 if TYPE_CHECKING:
@@ -49,6 +66,13 @@ _COMMON_PATHS = [
     "props.pageProps.data.positions",
     "props.pageProps.data.jobs",
     "props.pageProps.initialState.jobs.items",
+]
+
+# Common paths where React Router apps store job listings.
+_REACT_ROUTER_PATHS = [
+    "loaderData.search.searchResults",
+    "loaderData.root.jobs",
+    "loaderData.routes.jobs",
 ]
 
 # Backward-compatible aliases for test imports
@@ -164,9 +188,9 @@ def _extract_salary(item: dict, cfg: dict) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
-def _find_jobs_path(data: dict) -> tuple[str, int] | None:
+def _find_jobs_path(data: dict, paths: list[str] | None = None) -> tuple[str, int] | None:
     """Search common paths for a plausible jobs array. Returns (path, count) or None."""
-    for path in _COMMON_PATHS:
+    for path in paths or _COMMON_PATHS:
         arr = resolve_path(data, path)
         if (
             isinstance(arr, list)
@@ -178,18 +202,17 @@ def _find_jobs_path(data: dict) -> tuple[str, int] | None:
 
 
 async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | None:
-    """Detect whether *url* is a Next.js page with a plausible jobs array.
+    """Detect whether *url* has embedded JSON with a plausible jobs array.
 
-    Tries static HTTP first, then falls back to Playwright if ``__NEXT_DATA__``
-    is not found (some Next.js sites render it client-side).  When the Playwright
-    fallback succeeds, ``render: true`` is included in the returned metadata so
-    the suggested config uses browser rendering.
+    Checks for Next.js ``__NEXT_DATA__`` and React Router
+    ``__staticRouterHydrationData``.  Tries static HTTP first, then falls
+    back to Playwright if neither is found.
 
     When *pw* is provided, the Playwright fallback reuses that instance.
     """
-    # Try static HTTP first
     html = await fetch_page_text(url, client)
     if html:
+        # Try __NEXT_DATA__ first
         data = extract_next_data(html)
         if data:
             result = _find_jobs_path(data)
@@ -198,18 +221,41 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
                 log.info("nextdata.detected", url=url, path=path, count=count)
                 return {"path": path, "count": count}
 
-    # Fall back to Playwright (client-rendered __NEXT_DATA__)
+        # Try React Router hydration data
+        data = extract_react_router_data(html)
+        if data:
+            result = _find_jobs_path(data, _REACT_ROUTER_PATHS)
+            if result:
+                path, count = result
+                log.info("nextdata.detected", url=url, source="reactrouter", path=path, count=count)
+                return {"source": "reactrouter", "path": path, "count": count}
+
+    # Fall back to Playwright (client-rendered)
     try:
         from src.shared.browser import render as browser_render
 
         rendered_html = await browser_render(url, pw=pw)
-        data = extract_next_data(rendered_html)
-        if data:
-            result = _find_jobs_path(data)
-            if result:
-                path, count = result
-                log.info("nextdata.detected", url=url, path=path, count=count, render=True)
-                return {"path": path, "count": count, "render": True}
+        for source, extractor, paths in [
+            ("nextdata", extract_next_data, _COMMON_PATHS),
+            ("reactrouter", extract_react_router_data, _REACT_ROUTER_PATHS),
+        ]:
+            data = extractor(rendered_html)
+            if data:
+                result = _find_jobs_path(data, paths)
+                if result:
+                    path, count = result
+                    log.info(
+                        "nextdata.detected",
+                        url=url,
+                        source=source,
+                        path=path,
+                        count=count,
+                        render=True,
+                    )
+                    meta: dict = {"path": path, "count": count, "render": True}
+                    if source != "nextdata":
+                        meta["source"] = source
+                    return meta
     except Exception:
         log.debug("nextdata.render_fallback_failed", url=url, exc_info=True)
 
@@ -226,7 +272,7 @@ async def discover(
     client: httpx.AsyncClient,
     pw=None,
 ) -> list[DiscoveredJob] | set[str]:
-    """Discover jobs from ``__NEXT_DATA__`` on a Next.js career page."""
+    """Discover jobs from embedded JSON on a career page."""
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
 
@@ -240,6 +286,7 @@ async def discover(
         log.error("nextdata.missing_url_template", board_url=board_url)
         return set()
 
+    source: str = metadata.get("source", "nextdata")
     fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
     render = metadata.get("render", False)
@@ -272,10 +319,10 @@ async def discover(
         log.warning("nextdata.fetch_failed", board_url=board_url)
         return list() if fields_map else set()
 
-    # Extract __NEXT_DATA__
-    data = extract_next_data(html)
+    # Extract embedded JSON (source-aware)
+    data = extract_embedded_json(html, source)
     if not data:
-        log.warning("nextdata.no_next_data", board_url=board_url)
+        log.warning("nextdata.no_data", board_url=board_url, source=source)
         return list() if fields_map else set()
 
     # Walk path to jobs array
@@ -294,6 +341,7 @@ async def discover(
             client,
             path,
             pagination_cfg,
+            source=source,
             pw=pw,
             actions=actions,
             wait=wait,
@@ -346,6 +394,7 @@ async def _fetch_remaining_pages(
     client: httpx.AsyncClient,
     path: str,
     pagination_cfg: dict,
+    source: str = "nextdata",
     pw=None,
     actions: list[dict] | None = None,
     wait: str | None = None,
@@ -354,22 +403,39 @@ async def _fetch_remaining_pages(
     """Fetch pages 2..N and merge items with the first page."""
     pagination_path = pagination_cfg.get("path")
     page_count_field = pagination_cfg.get("page_count")
+    total_records_field = pagination_cfg.get("total_records")
+    page_size = pagination_cfg.get("page_size")
     page_param = pagination_cfg.get("page_param", "page")
 
-    if not pagination_path or not page_count_field:
+    if not pagination_path:
+        return first_page_items
+    # Need either page_count or (total_records + page_size)
+    if not page_count_field and not (total_records_field and page_size):
         return first_page_items
 
     pagination_data = resolve_path(data, pagination_path)
     if not isinstance(pagination_data, dict):
         return first_page_items
 
-    raw_count = resolve_path(pagination_data, page_count_field)
-    if raw_count is None:
-        return first_page_items
-    try:
-        page_count = int(raw_count)
-    except (ValueError, TypeError):
-        return first_page_items
+    # Resolve page_count: direct field or computed from total_records / page_size
+    if page_count_field:
+        raw_count = resolve_path(pagination_data, page_count_field)
+        if raw_count is None:
+            return first_page_items
+        try:
+            page_count = int(raw_count)
+        except (ValueError, TypeError):
+            return first_page_items
+    else:
+        raw_total = resolve_path(pagination_data, total_records_field)
+        if raw_total is None:
+            return first_page_items
+        try:
+            import math
+
+            page_count = math.ceil(int(raw_total) / int(page_size))
+        except (ValueError, TypeError):
+            return first_page_items
 
     if page_count <= 1:
         return first_page_items
@@ -398,7 +464,7 @@ async def _fetch_remaining_pages(
             if not html:
                 log.warning("nextdata.page_fetch_failed", page=page_num)
                 return []
-            page_data = extract_next_data(html)
+            page_data = extract_embedded_json(html, source)
             if not page_data:
                 return []
             items = resolve_path(page_data, path)

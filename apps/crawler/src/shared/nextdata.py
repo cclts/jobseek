@@ -1,4 +1,8 @@
-"""Shared helpers for parsing Next.js ``__NEXT_DATA__`` JSON blobs.
+"""Shared helpers for parsing embedded JSON blobs from HTML pages.
+
+Supports multiple sources:
+- ``nextdata`` — Next.js ``<script id="__NEXT_DATA__">`` (default)
+- ``reactrouter`` — React Router ``window.__staticRouterHydrationData``
 
 Used by both the nextdata monitor and the nextdata scraper.
 """
@@ -13,6 +17,10 @@ import jmespath
 NEXT_DATA_RE = re.compile(
     r'<script\s+id="__NEXT_DATA__"[^>]*>(.*?)</script>',
     re.DOTALL,
+)
+
+REACT_ROUTER_RE = re.compile(
+    r"window\.__staticRouterHydrationData\s*=\s*JSON\.parse\(\"(.+?)\"\);",
 )
 
 
@@ -56,3 +64,31 @@ def extract_next_data(html: str) -> dict | None:
         return json.loads(match.group(1))
     except (json.JSONDecodeError, ValueError):
         return None
+
+
+def extract_react_router_data(html: str) -> dict | None:
+    """Extract and parse React Router ``__staticRouterHydrationData``.
+
+    The data is double-encoded: ``JSON.parse("...")`` wraps an escaped
+    JSON string, so we decode the string literal first, then parse.
+    """
+    match = REACT_ROUTER_RE.search(html)
+    if not match:
+        return None
+    try:
+        # The captured group is a JSON-escaped string (inner quotes escaped).
+        # Wrap it back in quotes to let json.loads unescape it, then parse.
+        unescaped = json.loads('"' + match.group(1) + '"')
+        return json.loads(unescaped)
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
+def extract_embedded_json(html: str, source: str = "nextdata") -> dict | None:
+    """Dispatch to the right extractor based on *source*.
+
+    Supported values: ``"nextdata"`` (default), ``"reactrouter"``.
+    """
+    if source == "reactrouter":
+        return extract_react_router_data(html)
+    return extract_next_data(html)

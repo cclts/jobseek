@@ -15,8 +15,12 @@ export function WatchlistTipBanner({ aboveBottomBar }: { aboveBottomBar?: boolea
   const { activeBanner, claim, dismiss: dismissBanner } = useBanner();
   const [claimed, setClaimed] = useState(false);
 
-  // Only show on watchlist-related pages
-  const isWatchlistPage = pathname.includes("/watchlists") || /^\/[a-z]{2}\/[^/]+\/[^/]+$/.test(pathname);
+  // Only show on watchlist-related pages (watchlists list + public watchlist view)
+  // Exclude known app routes that also match /:lang/:x/:y (e.g. /en/company/apple)
+  const APP_ROUTES = /^\/(company|explore|saved|settings|progress)\//;
+  const segments = pathname.replace(/^\/[a-z]{2}\//, ""); // strip locale prefix
+  const isWatchlistPage = pathname.includes("/watchlists") ||
+    (/^\/[a-z]{2}\/[^/]+\/[^/]+$/.test(pathname) && !APP_ROUTES.test("/" + segments));
 
   useEffect(() => {
     if (!isWatchlistPage) return;
