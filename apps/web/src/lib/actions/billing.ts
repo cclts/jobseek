@@ -11,17 +11,15 @@ import { getUserPlan, PLAN_LIMITS, type PlanId } from "@/lib/plans";
 
 export async function getPlanInfo(): Promise<{
   plan: PlanId;
-  maxFollowedCompanies: number;
   canReceiveAlerts: boolean;
 }> {
   const userId = await getSessionUserId();
-  if (!userId) return { plan: "free", ...PLAN_LIMITS.free };
+  if (!userId) return { plan: "free", canReceiveAlerts: PLAN_LIMITS.free.canReceiveAlerts };
 
   const plan = await getUserPlan(userId);
   const limits = PLAN_LIMITS[plan];
   return {
     plan,
-    maxFollowedCompanies: limits.maxFollowedCompanies,
     canReceiveAlerts: limits.canReceiveAlerts,
   };
 }
@@ -39,8 +37,8 @@ export async function createCheckoutSession(): Promise<{
   //   mode: "subscription",
   //   customer_email: user.email, // or use existing stripe customer id
   //   line_items: [{ price: process.env.STRIPE_PRO_PRICE_ID!, quantity: 1 }],
-  //   success_url: `${process.env.NEXT_PUBLIC_APP_URL}/app/settings/billing?success=1`,
-  //   cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/app/settings/billing`,
+  //   success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?success=1`,
+  //   cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
   //   metadata: { userId },
   // });
   //
@@ -70,7 +68,7 @@ export async function createPortalSession(): Promise<{
   //
   // const session = await stripe.billingPortal.sessions.create({
   //   customer: sub.stripeCustomerId,
-  //   return_url: `${process.env.NEXT_PUBLIC_APP_URL}/app/settings/billing`,
+  //   return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
   // });
   //
   // return { url: session.url };

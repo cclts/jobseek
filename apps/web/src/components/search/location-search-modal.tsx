@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Search, Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -8,11 +8,12 @@ import { getGlobalLocationsGrouped } from "@/lib/actions/locations";
 import type { GlobalLocationGroup } from "@/lib/actions/locations";
 import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
+import { findBestGuess } from "./best-guess";
 
 /** Show region sub-headers when a country has more cities than this. */
 const REGION_THRESHOLD = 8;
 
-type SelectedLocation = { id: number; slug: string; name: string; type: string };
+type SelectedLocation = { id: number; slug: string; name: string; type: string; parentName?: string | null };
 
 interface LocationSearchModalProps {
   open: boolean;
@@ -35,6 +36,8 @@ export function LocationSearchModal({
   const [groups, setGroups] = useState<GlobalLocationGroup[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [warning, setWarning] = useState("");
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -83,6 +86,35 @@ export function LocationSearchModal({
     return country.regions.reduce((sum, r) => sum + r.locations.length, 0);
   }
 
+  const showWarning = useCallback((msg: string) => {
+    clearTimeout(warningTimer.current);
+    setWarning(msg);
+    warningTimer.current = setTimeout(() => setWarning(""), 3000);
+  }, []);
+
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      const leafItems = filtered.flatMap((c) =>
+        c.regions.flatMap((r) => r.locations),
+      );
+      const result = findBestGuess(search, leafItems);
+      if (!result) return;
+      if ("match" in result) {
+        onToggle(result.match);
+        setSearch("");
+        setWarning("");
+      } else {
+        showWarning(t({
+          id: "search.bestGuess.ambiguous",
+          comment: "Warning when Enter is pressed but multiple items match",
+          message: "Multiple matches — select one below",
+        }));
+      }
+    },
+    [filtered, search, onToggle, showWarning, t],
+  );
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -112,7 +144,8 @@ export function LocationSearchModal({
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setWarning(""); }}
+                onKeyDown={handleSearchKeyDown}
                 placeholder={t({
                   id: "search.locationModal.searchPlaceholder",
                   comment: "Placeholder for search input in global location modal",
@@ -121,6 +154,9 @@ export function LocationSearchModal({
                 className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted"
               />
             </div>
+            {warning && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">{warning}</p>
+            )}
           </div>
 
           {/* Body */}
@@ -151,6 +187,7 @@ export function LocationSearchModal({
                             slug: country.countrySlug,
                             name: country.countryName,
                             type: "country",
+                            parentName: null,
                           })
                         }
                         className={`mb-2 cursor-pointer text-xs font-semibold uppercase tracking-wider transition-colors ${
@@ -181,6 +218,7 @@ export function LocationSearchModal({
                                         slug: region.regionSlug,
                                         name: region.regionName,
                                         type: "region",
+                                        parentName: country.countryName,
                                       })
                                     }
                                     className={`mb-1.5 cursor-pointer text-xs font-medium transition-colors ${
@@ -205,7 +243,7 @@ export function LocationSearchModal({
                                     return (
                                       <button
                                         key={loc.id}
-                                        onClick={() => onToggle(loc)}
+                                        onClick={() => onToggle({ ...loc, parentName: region.regionName || country.countryName })}
                                         className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
                                           active
                                             ? "bg-primary/10 text-primary"
@@ -232,7 +270,7 @@ export function LocationSearchModal({
                               return (
                                 <button
                                   key={loc.id}
-                                  onClick={() => onToggle(loc)}
+                                  onClick={() => onToggle({ ...loc, parentName: region.regionName || country.countryName })}
                                   className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
                                     active
                                       ? "bg-primary/10 text-primary"

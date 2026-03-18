@@ -5,36 +5,36 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { updatePreferences } from "@/lib/actions/preferences";
+import { useBanner } from "@/components/BannerProvider";
 import Link from "next/link";
 import { Info } from "lucide-react";
 
-const STORAGE_KEY = "cookie-consent";
+const BANNER_ID = "cookie-consent";
 
 type CookieBannerProps = {
-  /** When true, fixes the banner above a mobile bottom bar */
   aboveBottomBar?: boolean;
-  /** Server-provided consent state from user preferences DB */
   serverConsent?: boolean;
 };
 
 export function CookieBanner({ aboveBottomBar, serverConsent }: CookieBannerProps) {
   const { t } = useLingui();
   const lp = useLocalePath();
-  const [visible, setVisible] = useState(false);
+  const { activeBanner, claim, dismiss: dismissBanner } = useBanner();
+  const [claimed, setClaimed] = useState(false);
 
   useEffect(() => {
     if (serverConsent) return;
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      setVisible(true);
-    }
-  }, [serverConsent]);
+    if (localStorage.getItem(BANNER_ID)) return;
+    if (claim(BANNER_ID)) setClaimed(true);
+  }, [serverConsent, claim]);
 
-  if (!visible) return null;
+  if (!claimed || activeBanner !== BANNER_ID) return null;
 
   function dismiss() {
-    localStorage.setItem(STORAGE_KEY, "1");
-    setVisible(false);
-    updatePreferences({ cookieConsent: true }).catch(() => {});
+    localStorage.setItem(BANNER_ID, "1");
+    dismissBanner(BANNER_ID);
+    setClaimed(false);
+    updatePreferences({ cookieConsent: true, dismissBanner: BANNER_ID }).catch(() => {});
   }
 
   return (

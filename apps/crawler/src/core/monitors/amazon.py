@@ -484,4 +484,107 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     return all_jobs
 
 
-register("amazon", discover, cost=10, rich=True)
+async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
+    """Yield batches of DiscoveredJob after each country/category partition.
+
+    Same logic as discover() but yields intermediate batches so the caller
+    can refresh timeouts and start R2 uploads while discovery continues.
+    """
+    metadata = board.get("metadata") or {}
+
+    # Build base params from config
+    base_params: dict = {}
+    if country := metadata.get("country"):
+        base_params["country"] = country
+    if category := metadata.get("category"):
+        base_params["category[]"] = category
+    if biz_cat := metadata.get("business_category"):
+        base_params["business_category[]"] = biz_cat
+
+    # Try unpartitioned first
+    jobs, total = await _paginate_query(client, base_params)
+
+    if total < _API_RESULT_CAP:
+        log.info("amazon.discovered", total=total, jobs=len(jobs))
+        yield jobs
+        return
+
+    # Already filtered by country — split further by category
+    if "country" in base_params:
+        if "category[]" in base_params:
+            log.warning(
+                "amazon.cap_country_category",
+                country=base_params["country"],
+                category=base_params["category[]"],
+                jobs=len(jobs),
+            )
+            yield jobs
+            return
+        category_slugs = await _fetch_category_slugs(client)
+        result = await _partition_by_category(client, base_params, jobs, total, category_slugs)
+        yield result
+        return
+
+    # Extract country codes from the initial results
+    country_codes = sorted(
+        {j.metadata["country_code"] for j in jobs if j.metadata and j.metadata.get("country_code")}
+    )
+    if not country_codes:
+        country_codes = _FALLBACK_COUNTRY_CODES
+        log.warning("amazon.countries_fallback")
+    else:
+        log.info("amazon.countries_from_api", count=len(country_codes))
+
+    log.info("amazon.partitioning_by_country", initial_total=total)
+
+    # Lazily fetched when a country exceeds the cap
+    category_slugs: list[str] | None = None
+
+    seen_urls: set[str] = set()
+    total_jobs = 0
+
+    for country_code in country_codes:
+        params = {**base_params, "country": country_code}
+        country_jobs, country_total = await _paginate_query(client, params)
+
+        if country_total == 0:
+            continue
+
+        # Country itself hit the cap — split further by category
+        if country_total >= _API_RESULT_CAP:
+            if category_slugs is None:
+                category_slugs = await _fetch_category_slugs(client)
+            country_jobs = await _partition_by_category(
+                client,
+                params,
+                country_jobs,
+                country_total,
+                category_slugs,
+            )
+
+        # Dedup and yield batch for this country
+        new_jobs: list[DiscoveredJob] = []
+        for job in country_jobs:
+            if job.url not in seen_urls:
+                seen_urls.add(job.url)
+                new_jobs.append(job)
+
+        log.info(
+            "amazon.country",
+            country=country_code,
+            total=country_total,
+            new=len(new_jobs),
+        )
+
+        if new_jobs:
+            total_jobs += len(new_jobs)
+            yield new_jobs
+
+        if total_jobs >= MAX_JOBS:
+            log.warning("amazon.truncated", total=total_jobs, cap=MAX_JOBS)
+            break
+
+    log.info("amazon.discovered", total=total_jobs, countries=len(country_codes))
+
+
+register("amazon", discover, cost=10, rich=True, stream=discover_stream)

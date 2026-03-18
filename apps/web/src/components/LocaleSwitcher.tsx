@@ -9,6 +9,7 @@ import { Globe } from "lucide-react";
 import { LocaleFlag, localeLabels } from "@/components/flags";
 import { updatePreferences } from "@/lib/actions/preferences";
 import { localPrefs } from "@/lib/preference-timestamps";
+import { tooltipClass } from "@/components/ui/tooltip-styles";
 
 type LocaleSwitcherProps = {
   className?: string;
@@ -56,7 +57,7 @@ export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
           </Tooltip.Trigger>
           <Tooltip.Portal>
             <Tooltip.Content
-              className="z-50 rounded-md bg-tooltip-bg backdrop-blur-md px-2.5 py-1 text-xs text-white data-[state=delayed-open]:animate-[tooltip-in_150ms_ease] data-[state=instant-open]:animate-[tooltip-in_150ms_ease] data-[state=closed]:animate-[tooltip-out_100ms_ease_forwards]"
+              className={tooltipClass}
               sideOffset={6}
             >
               {label}

@@ -15,6 +15,7 @@ import {
   uniqueIndex,
   primaryKey,
   jsonb,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 // ── Better Auth core tables ──────────────────────────────────────────
@@ -108,6 +109,7 @@ export const userPreferences = pgTable("user_preferences", {
   jobLanguages: text("job_languages").array().notNull().default([]),
   displayCurrency: text("display_currency").default("EUR").notNull(),
   cookieConsent: boolean("cookie_consent").default(false).notNull(),
+  dismissedBanners: text("dismissed_banners").array().notNull().default([]),
   themeUpdatedAt: timestamp("theme_updated_at"),
   localeUpdatedAt: timestamp("locale_updated_at"),
   lastPasswordResetAt: timestamp("last_password_reset_at"),
@@ -685,5 +687,65 @@ export const outreachDraft = pgTable(
       .notNull(),
   },
   (table) => [index("idx_od_signal").on(table.signalId)],
+);
+
+// ── Watchlist tables ────────────────────────────────────────────────
+
+export const watchlist = pgTable(
+  "watchlist",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    isPublic: boolean("is_public").default(true).notNull(),
+    alertsEnabled: boolean("alerts_enabled").default(false).notNull(),
+    filters: jsonb("filters").default({}).notNull(),
+    sourceWatchlistId: uuid("source_watchlist_id").references((): AnyPgColumn => watchlist.id, {
+      onDelete: "set null",
+    }),
+    lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_wl_user_slug").on(table.userId, table.slug),
+    index("idx_wl_user_accessed").on(table.userId, table.lastAccessedAt),
+    index("idx_wl_public")
+      .on(table.isPublic)
+      .where(sql`is_public = true`),
+  ],
+);
+
+export const watchlistCompany = pgTable(
+  "watchlist_company",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    watchlistId: uuid("watchlist_id")
+      .notNull()
+      .references(() => watchlist.id, { onDelete: "cascade" }),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => company.id, { onDelete: "cascade" }),
+    addedAt: timestamp("added_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_wlc_watchlist_company").on(
+      table.watchlistId,
+      table.companyId,
+    ),
+    index("idx_wlc_company").on(table.companyId),
+  ],
 );
 

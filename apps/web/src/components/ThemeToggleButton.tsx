@@ -7,6 +7,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import { Moon, Sun } from "lucide-react";
 import { localPrefs } from "@/lib/preference-timestamps";
 import { updatePreferences } from "@/lib/actions/preferences";
+import { tooltipClass } from "@/components/ui/tooltip-styles";
 
 type ThemeToggleButtonProps = {
   className?: string;
@@ -44,7 +45,7 @@ export function ThemeToggleButton({ className }: ThemeToggleButtonProps) {
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content
-            className="z-50 rounded-md bg-tooltip-bg backdrop-blur-md px-2.5 py-1 text-xs text-white data-[state=delayed-open]:animate-[tooltip-in_150ms_ease] data-[state=instant-open]:animate-[tooltip-in_150ms_ease] data-[state=closed]:animate-[tooltip-out_100ms_ease_forwards]"
+            className={tooltipClass}
             sideOffset={6}
           >
             {label}

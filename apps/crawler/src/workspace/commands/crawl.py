@@ -220,6 +220,15 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int)
         out.plain("probe", "  ".join(parts))
         if metadata is not None and name in _MONITOR_PROBE_HINTS:
             out.plain("probe", f"  {_MONITOR_PROBE_HINTS[name]}")
+        # Surface alternative api_sniffer endpoints
+        if metadata is not None and name == "api_sniffer" and metadata.get("alternatives"):
+            for alt in metadata["alternatives"]:
+                total_str = f", total: {alt['total']}" if alt.get("total") else ""
+                out.plain(
+                    "probe",
+                    f"  Also: {alt['items']} items, score: {alt['score']}{total_str} "
+                    f"at {alt['url'][:100]}",
+                )
         probe_summary_parts.append(f"{name} {symbol}")
 
     if use_priority_split:
@@ -831,6 +840,34 @@ def select_monitor(
             config = {k: v for k, v in probe_data[type_].items()}
             out.info("monitor", f"Auto-filled config from probe: {json.dumps(config)}")
 
+    # Validate pagination config schema if present
+    if "pagination" in config:
+        _VALID_PAG_KEYS = {
+            "param_name",
+            "style",
+            "start_value",
+            "increment",
+            "location",
+            "max_pages",
+            "page_size",
+        }
+        pag_cfg = config["pagination"]
+        if isinstance(pag_cfg, dict):
+            unknown = set(pag_cfg.keys()) - _VALID_PAG_KEYS
+            if unknown:
+                # Check for common aliases and suggest corrections
+                _PAG_ALIASES = {"param": "param_name", "type": "style", "page_size": "increment"}
+                suggestions = []
+                for k in unknown:
+                    if k in _PAG_ALIASES:
+                        suggestions.append(f"'{k}' -> '{_PAG_ALIASES[k]}'")
+                msg = f"Unknown pagination key(s): {', '.join(sorted(unknown))}"
+                if suggestions:
+                    msg += f". Did you mean: {', '.join(suggestions)}?"
+                out.die(msg)
+            if "param_name" not in pag_cfg:
+                out.die("Pagination config requires 'param_name'. See: ws help monitor api_sniffer")
+
     # Clean up probe/internal data from config
     _internal_keys = {
         "_probe",
@@ -1085,6 +1122,22 @@ def run_monitor(slug: str | None, board_alias: str | None):
             )
     else:
         out.info("monitor", f"{job_count} jobs in {elapsed:.1f}s")
+
+    # Surface pagination warnings from structlog events
+    for ev in log_events:
+        if ev.get("event") == "api_sniff.page_size_mismatch":
+            out.warn(
+                "monitor",
+                f"API returns {ev['actual_page_size']} items/page but pagination increment "
+                f"is {ev['configured_increment']} — skipping jobs! "
+                f"Fix: set increment to {ev['actual_page_size']}",
+            )
+        elif ev.get("event") == "api_sniff.pagination_gap":
+            out.warn(
+                "monitor",
+                f"API reports {ev['total_count']} total but only {ev['discovered']} discovered "
+                "— likely pagination misconfiguration",
+            )
 
     # Count verification prompt — completeness matters most
     if job_count > 0:
@@ -1853,15 +1906,19 @@ def run_quality_gates(
         elif fb.get("verdict") == "poor":
             blockers.append(f"Board {b.alias}: verdict is poor (use --force)")
 
-    # Check for image artifacts (original files saved by ws set)
-    from src.workspace.state import ws_dir
+    # Check for image artifacts (original files saved by ws set).
+    # Skip when logos already exist on CDN (reconfig mode — URLs are HTTP).
+    logo_is_remote = ws.logo_url.startswith("http") if ws.logo_url else False
+    icon_is_remote = ws.icon_url.startswith("http") if ws.icon_url else False
+    if not logo_is_remote or not icon_is_remote:
+        from src.workspace.state import ws_dir
 
-    artifacts = ws_dir(ws.slug) / "artifacts" / "company"
-    has_logo = bool(list(artifacts.glob("logo_original.*"))) if artifacts.exists() else False
-    has_icon = bool(list(artifacts.glob("icon_original.*"))) if artifacts.exists() else False
-    if not has_logo:
-        warnings.append("No full logo image artifact found (logo_url)")
-    if not has_icon:
-        warnings.append("No minified square logo image artifact found (icon_url)")
+        artifacts = ws_dir(ws.slug) / "artifacts" / "company"
+        has_logo = bool(list(artifacts.glob("logo_original.*"))) if artifacts.exists() else False
+        has_icon = bool(list(artifacts.glob("icon_original.*"))) if artifacts.exists() else False
+        if not has_logo and not logo_is_remote:
+            warnings.append("No full logo image artifact found (logo_url)")
+        if not has_icon and not icon_is_remote:
+            warnings.append("No minified square logo image artifact found (icon_url)")
 
     return blockers, warnings

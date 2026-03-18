@@ -30,6 +30,7 @@ export async function updatePreferences(
     jobLanguages?: string[];
     displayCurrency?: string;
     cookieConsent?: boolean;
+    dismissBanner?: string;
     themeUpdatedAt?: string;
     localeUpdatedAt?: string;
   },
@@ -51,6 +52,13 @@ export async function updatePreferences(
 
     if (data.cookieConsent !== undefined) {
       set.cookieConsent = data.cookieConsent;
+    }
+
+    if (data.dismissBanner) {
+      const current = existing.dismissedBanners ?? [];
+      if (!current.includes(data.dismissBanner)) {
+        set.dismissedBanners = [...current, data.dismissBanner];
+      }
     }
 
     if (data.jobLanguages !== undefined) {

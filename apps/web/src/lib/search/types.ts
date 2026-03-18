@@ -10,6 +10,7 @@ export interface SearchResultPosting {
   firstSeenAt: Date | string;
   relevanceScore: number;
   locations: PostingLocation[];
+  isActive?: boolean;
 }
 
 export interface SearchResultCompany {

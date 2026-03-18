@@ -7,7 +7,6 @@ then stores them and any generated outreach drafts in the DB.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
 
 import httpx
 import structlog

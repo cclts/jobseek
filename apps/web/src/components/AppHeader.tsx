@@ -5,7 +5,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Home, Bookmark, Settings, Search, LogIn, LogOut } from "lucide-react";
+import { Compass, Bookmark, Eye, Settings, LogIn, LogOut } from "lucide-react";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
@@ -13,9 +13,7 @@ import { useAuth } from "@/lib/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/Button";
 import { SearchBar } from "@/components/search/search-bar";
-
-const tooltipContentClass =
-  "z-50 rounded-md bg-tooltip-bg backdrop-blur-md px-2.5 py-1 text-xs text-white data-[state=delayed-open]:animate-[tooltip-in_150ms_ease] data-[state=instant-open]:animate-[tooltip-in_150ms_ease] data-[state=closed]:animate-[tooltip-out_100ms_ease_forwards]";
+import { tooltipClass } from "@/components/ui/tooltip-styles";
 
 const iconBtnClass =
   "inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors cursor-pointer";
@@ -29,7 +27,7 @@ function NavIcon({ href, label, children }: { href: string; label: string; child
         </Link>
       </Tooltip.Trigger>
       <Tooltip.Portal>
-        <Tooltip.Content className={tooltipContentClass} sideOffset={6}>
+        <Tooltip.Content className={tooltipClass} sideOffset={6}>
           {label}
         </Tooltip.Content>
       </Tooltip.Portal>
@@ -53,10 +51,11 @@ export function AppHeader() {
 
   const appHref = lp(siteConfig.nav.app.href);
 
-  const homeLabel = t({ id: "app.header.nav.home", comment: "Home nav icon tooltip", message: "Home" });
+  const exploreLabel = t({ id: "app.header.nav.explore", comment: "Explore nav icon tooltip", message: "Explore" });
+  const watchlistsLabel = t({ id: "app.header.nav.watchlists", comment: "Watchlists nav icon tooltip", message: "Watchlists" });
   const savedLabel = t({ id: "app.header.nav.saved", comment: "Saved items nav icon tooltip", message: "Saved" });
   const settingsLabel = t({ id: "app.header.nav.settings", comment: "Settings nav icon tooltip", message: "Settings" });
-  const searchLabel = t({ id: "app.header.nav.search", comment: "Search nav icon tooltip", message: "Search" });
+
 
   function getInitials(name: string) {
     return name
@@ -69,7 +68,7 @@ export function AppHeader() {
 
   async function handleSignOut() {
     await authClient.signOut();
-    window.location.href = lp("/app");
+    window.location.href = lp("/explore");
   }
 
   const avatarButton = (
@@ -138,10 +137,13 @@ export function AppHeader() {
 
           {/* Nav icons (desktop only) */}
           <nav className="hidden items-center gap-1 md:flex">
-            <NavIcon href={appHref} label={homeLabel}>
-              <Home size={18} />
+            <NavIcon href={appHref} label={exploreLabel}>
+              <Compass size={18} />
             </NavIcon>
-            <NavIcon href={lp("/app/saved")} label={savedLabel}>
+            <NavIcon href={lp("/watchlists")} label={watchlistsLabel}>
+              <Eye size={18} />
+            </NavIcon>
+            <NavIcon href={lp("/saved")} label={savedLabel}>
               <Bookmark size={18} />
             </NavIcon>
             <NavIcon href={lp(siteConfig.nav.settings.href)} label={settingsLabel}>
@@ -172,13 +174,13 @@ export function AppHeader() {
 
       {/* ── Mobile bottom bar ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-divider bg-surface-alpha backdrop-blur-md md:hidden">
-        <BottomBarLink href={appHref} label={homeLabel}>
-          <Home size={20} />
+        <BottomBarLink href={appHref} label={exploreLabel}>
+          <Compass size={20} />
         </BottomBarLink>
-        <BottomBarLink href={appHref} label={searchLabel}>
-          <Search size={20} />
+        <BottomBarLink href={lp("/watchlists")} label={watchlistsLabel}>
+          <Eye size={20} />
         </BottomBarLink>
-        <BottomBarLink href={lp("/app/saved")} label={savedLabel}>
+        <BottomBarLink href={lp("/saved")} label={savedLabel}>
           <Bookmark size={20} />
         </BottomBarLink>
         <BottomBarLink href={lp(siteConfig.nav.settings.href)} label={settingsLabel}>

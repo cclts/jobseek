@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm/relations";
 import { company, followedCompany, user, occupationDomain, occupation, subscription, jobBoard, jobPosting, savedJob, session, companyRequest, account, industry, userPreferences, location, seniority, locationMacroMember, companyDescription, occupationName, seniorityName, occupationDomainName, locationName, industryName } from "./schema";
 
-export const followedCompanyRelations = relations(followedCompany, ({one}) => ({
+export const starredCompanyRelations = relations(followedCompany, ({one}) => ({
 	company: one(company, {
 		fields: [followedCompany.companyId],
 		references: [company.id]
@@ -13,7 +13,7 @@ export const followedCompanyRelations = relations(followedCompany, ({one}) => ({
 }));
 
 export const companyRelations = relations(company, ({one, many}) => ({
-	followedCompanies: many(followedCompany),
+	starredCompanies: many(followedCompany),
 	jobBoards: many(jobBoard),
 	companyRequests: many(companyRequest),
 	industry: one(industry, {
@@ -25,7 +25,7 @@ export const companyRelations = relations(company, ({one, many}) => ({
 }));
 
 export const userRelations = relations(user, ({many}) => ({
-	followedCompanies: many(followedCompany),
+	starredCompanies: many(followedCompany),
 	subscriptions: many(subscription),
 	savedJobs: many(savedJob),
 	sessions: many(session),

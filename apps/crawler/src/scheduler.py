@@ -14,6 +14,7 @@ import contextlib
 import signal
 import uuid
 
+import asyncpg
 import dotenv
 import structlog
 
@@ -182,7 +183,7 @@ class WorkerPool:
         try:
             while current is not None:
                 try:
-                    ok, elapsed = await asyncio.wait_for(current.run(), timeout=self._ITEM_TIMEOUT)
+                    ok, elapsed = await self._run_with_heartbeat(current)
                     task_duration_seconds.labels(kind=current.kind).observe(elapsed)
                     if ok:
                         self.succeeded += 1
@@ -200,6 +201,9 @@ class WorkerPool:
                         kind=current.kind,
                         timeout_s=self._ITEM_TIMEOUT,
                     )
+                    if current.on_timeout is not None:
+                        with contextlib.suppress(Exception):
+                            await current.on_timeout()
                 except Exception:
                     self.failed += 1
                     tasks_total.labels(kind=current.kind, status="failed").inc()
@@ -214,6 +218,36 @@ class WorkerPool:
         finally:
             self._domains_inflight.discard(item.domain)
             self._semaphore.release()
+
+    async def _run_with_heartbeat(self, item: WorkItem) -> tuple[bool, float]:
+        """Run a work item, using heartbeat-aware timeout if a DeadlineExtender is set."""
+        extender = item.deadline_extender
+        if extender is None:
+            return await asyncio.wait_for(item.run(), timeout=self._ITEM_TIMEOUT)
+
+        # Heartbeat-aware: renew deadline each time extender is pulsed
+        task = asyncio.ensure_future(item.run())
+        try:
+            while not task.done():
+                extender._event.clear()
+                done, _ = await asyncio.wait({task}, timeout=self._ITEM_TIMEOUT)
+                if done:
+                    break
+                # Task not done — check if we got a heartbeat
+                if extender._event.is_set():
+                    continue  # heartbeat received, renew deadline
+                # No heartbeat — truly timed out
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+                raise TimeoutError
+            return task.result()
+        except BaseException:
+            if not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+            raise
 
     async def drain(self, timeout: float = 50) -> None:
         """Wait for in-flight tasks, cancelling stragglers after *timeout* seconds."""
@@ -270,25 +304,32 @@ async def run_continuous_loop(
         monitors_claimed = 0
         scrapes_claimed = 0
 
-        # Phase 1: monitors (priority)
-        budget = wp.claim_budget
-        skip = wp.saturated_domains
-        if monitor and budget > 0:
-            items = await claim_monitor_work(pool, http, budget, worker_id, skip)
-            monitors_claimed = len(items)
-            for item in items:
-                wp.submit(item)
-                work_found = True
+        try:
+            # Phase 1: monitors (priority)
+            budget = wp.claim_budget
+            skip = wp.saturated_domains
+            if monitor and budget > 0:
+                items = await claim_monitor_work(pool, http, budget, worker_id, skip)
+                monitors_claimed = len(items)
+                for item in items:
+                    wp.submit(item)
+                    work_found = True
 
-        # Phase 2: scrapes (fill remaining)
-        budget = wp.claim_budget
-        skip = wp.saturated_domains
-        if scrape and budget > 0:
-            items = await claim_scrape_work(pool, http, budget, worker_id, skip)
-            scrapes_claimed = len(items)
-            for item in items:
-                wp.submit(item)
-                work_found = True
+            # Phase 2: scrapes (fill remaining)
+            budget = wp.claim_budget
+            skip = wp.saturated_domains
+            if scrape and budget > 0:
+                items = await claim_scrape_work(pool, http, budget, worker_id, skip)
+                scrapes_claimed = len(items)
+                for item in items:
+                    wp.submit(item)
+                    work_found = True
+        except (TimeoutError, OSError, asyncpg.PostgresError) as exc:
+            log.warning("pool.claim_error", error=str(exc))
+            # Back off and retry on the next tick
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(shutdown_event.wait(), timeout=5.0)
+            continue
 
         tasks_active.set(wp.active_count)
         tasks_queued.set(wp.queued_count)

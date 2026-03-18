@@ -12,7 +12,7 @@ type Props = {
 export default async function AuthLayout({ params, children }: Props) {
   const { lang } = await params;
   const session = await auth.api.getSession({ headers: await headers() });
-  if (session) redirect(`/${lang}/app`);
+  if (session) redirect(`/${lang}/explore`);
 
   return <AuthShell>{children}</AuthShell>;
 }

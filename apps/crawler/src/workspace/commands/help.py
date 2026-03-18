@@ -70,7 +70,6 @@ Monitor Types (cheapest first):
   Type              Cost    Returns         Scraper needed?
   ────────────────────────────────────────────────────────
   join              9       Full job data   No (skipped)
-  apify_meta        10      Full job data   No (skipped)
   ashby             10      Full job data   No (skipped)
   bite              10      Full job data   No (skipped)
   breezy            10      Full job data   No (skipped)
@@ -91,6 +90,7 @@ Monitor Types (cheapest first):
   personio          10      Full/partial    If descriptions missing (fallback)
   umantis           15      URL set         Yes
   nextdata          20      URLs or full    If URL-only
+  apify_meta        50      Full job data   No (skipped)
   sitemap           50      URL set         Yes
   api_sniffer       80      URLs or full    If URL-only (no fields)
   dom               100     URL set         Yes
@@ -1461,6 +1461,12 @@ Feedback Command Reference:
     ws feedback --verdict poor --verdict-notes "Description truncated" \\
         --description unusable"""
 
+MONITOR_SIGNALS = """\
+signals — Signals Discovery Monitor
+
+  Returns:  DiscoveredJob list (rich — no scraper needed)
+  Cost:     200"""
+
 # ── Lookup tables ────────────────────────────────────────────────────────
 
 MONITOR_CARDS: dict[str, str] = {
@@ -1490,6 +1496,7 @@ MONITOR_CARDS: dict[str, str] = {
     "nextdata": MONITOR_NEXTDATA,
     "dom": MONITOR_DOM,
     "api_sniffer": MONITOR_API_SNIFFER,
+    "signals": MONITOR_SIGNALS,
 }
 
 SCRAPER_SMARTRECRUITERS = """\
@@ -1578,9 +1585,9 @@ def _show_occupations() -> None:
     """Display occupation taxonomy from data/occupations.csv."""
     import polars as pl
 
-    from src.shared.constants import DATA_DIR
+    from src.shared.constants import get_data_dir
 
-    path = DATA_DIR / "occupations.csv"
+    path = get_data_dir() / "occupations.csv"
     if not path.exists():
         print("No occupations found in data/occupations.csv")
         return
@@ -1607,9 +1614,9 @@ def _show_seniority() -> None:
     """Display seniority taxonomy from data/seniority.csv."""
     import polars as pl
 
-    from src.shared.constants import DATA_DIR
+    from src.shared.constants import get_data_dir
 
-    path = DATA_DIR / "seniority.csv"
+    path = get_data_dir() / "seniority.csv"
     if not path.exists():
         print("No seniority levels found in data/seniority.csv")
         return
@@ -1636,24 +1643,27 @@ def _show_industries() -> None:
     """Display industry taxonomy from data/industries.csv."""
     import polars as pl
 
-    from src.shared.constants import DATA_DIR
+    from src.shared.constants import get_data_dir
 
-    path = DATA_DIR / "industries.csv"
+    path = get_data_dir() / "industries.csv"
     if not path.exists():
         print("No industries found in data/industries.csv")
         return
 
     df = pl.read_csv(path, infer_schema_length=0)
+    name_header = "EN" if "en" in df.columns else "Name"
+    name_col = "en" if "en" in df.columns else "name"
+    de_col = "de" if "de" in df.columns else None
     print("Industry Taxonomy")
     print("Managed in data/industries.csv — set per company with: ws set --industry <id>\n")
-    print(f"  {'ID':>3}  {'EN':<30} {'DE':<30}")
-    print(f"  {'──':>3}  {'─' * 30} {'─' * 30}")
+    print(f"  {'ID':>3}  {name_header:<30}" + (f" {'DE':<30}" if de_col else ""))
+    print(f"  {'──':>3}  {'─' * 30}" + (f" {'─' * 30}" if de_col else ""))
 
     for row in df.iter_rows(named=True):
         ind_id = row["id"]
-        en = row.get("en", "")
-        de = row.get("de", "")
-        print(f"  {ind_id:>3}  {en:<30} {de:<30}")
+        name = row.get(name_col, "")
+        de = row.get(de_col, "") if de_col else ""
+        print(f"  {ind_id:>3}  {name:<30}" + (f" {de:<30}" if de_col else ""))
 
     print(f"\n  {len(df)} industries total")
     print("\n  CLI: ws taxonomy search industries <query>")

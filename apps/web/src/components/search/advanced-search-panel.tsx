@@ -73,18 +73,12 @@ export function AdvancedSearchPanel({
   const [experienceModalOpen, setExperienceModalOpen] = useState(false);
 
   const handleToggleLocation = useCallback(
-    (loc: { id: number; slug: string; name: string; type: string }) => {
+    (loc: { id: number; slug: string; name: string; type: string; parentName?: string | null }) => {
       const exists = locations.some((l) => l.id === loc.id);
       if (exists) {
         onRemoveLocation(loc.id);
       } else {
-        onAddLocation({
-          id: loc.id,
-          slug: loc.slug,
-          name: loc.name,
-          type: loc.type as SelectedLocation["type"],
-          parentName: null,
-        });
+        onAddLocation({ ...loc, parentName: loc.parentName ?? null } as SelectedLocation);
       }
     },
     [locations, onAddLocation, onRemoveLocation],

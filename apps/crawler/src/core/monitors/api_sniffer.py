@@ -275,6 +275,32 @@ async def can_handle(
             if fields:
                 meta["fields"] = fields
 
+            # Collect alternative high-scoring endpoints for user review
+            from src.shared.api_sniff import ArrayCandidate as _AC
+            from src.shared.api_sniff import score_candidate as _sc
+
+            alt_candidates: list[dict] = []
+            for alt_ex in exchanges:
+                if alt_ex.body is None or alt_ex.url == ex.url:
+                    continue
+                for alt_path, alt_items in find_arrays(alt_ex.body):
+                    ac = _AC(exchange=alt_ex, json_path=alt_path, items=alt_items)
+                    _sc(ac, url)
+                    if ac.score >= 50 and len(alt_items) >= 3:
+                        alt_total = find_total_count(alt_ex.body, alt_path)
+                        alt_candidates.append(
+                            {
+                                "url": alt_ex.url[:200],
+                                "json_path": alt_path,
+                                "items": len(alt_items),
+                                "score": ac.score,
+                                "total": alt_total,
+                            }
+                        )
+            if alt_candidates:
+                alt_candidates.sort(key=lambda c: c["score"], reverse=True)
+                meta["alternatives"] = alt_candidates[:3]
+
             return meta
 
     except Exception:

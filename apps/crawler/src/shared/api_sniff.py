@@ -1062,6 +1062,26 @@ async def paginate_all(
         pages_fetched += 1
         current_value += pag.increment
 
+    # Warn if pagination increment doesn't match actual page size
+    if pag.style == "offset" and pag.increment > page_size:
+        log.warning(
+            "api_sniff.page_size_mismatch",
+            configured_increment=pag.increment,
+            actual_page_size=page_size,
+            hint="API returned fewer items than pagination increment — jobs may be skipped. "
+            "Set increment to match the actual page size.",
+        )
+
+    # Warn if total count >> discovered count (pagination gap)
+    if result.total_count and len(all_items) < result.total_count * 0.8:
+        log.warning(
+            "api_sniff.pagination_gap",
+            total_count=result.total_count,
+            discovered=len(all_items),
+            hint="Discovered significantly fewer items than API total — "
+            "check pagination increment matches actual page size.",
+        )
+
     return all_items
 
 

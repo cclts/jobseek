@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { Check, Crown, AlertTriangle } from "lucide-react";
+import { Check, Crown } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useFollowedCompanies } from "@/components/FollowedCompaniesProvider";
 import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -14,7 +13,6 @@ import type { PlanId } from "@/lib/plans";
 
 type PlanInfo = {
   plan: PlanId;
-  maxFollowedCompanies: number;
   canReceiveAlerts: boolean;
 };
 
@@ -79,60 +77,6 @@ function PlanCard({
   );
 }
 
-function UsageSection({ planInfo }: { planInfo: PlanInfo }) {
-  const { t } = useLingui();
-  const { followCount } = useFollowedCompanies();
-  const max = planInfo.maxFollowedCompanies;
-  const isUnlimited = max === Number.MAX_SAFE_INTEGER;
-  const pct = isUnlimited ? 0 : Math.min(100, Math.round((followCount / max) * 100));
-  const atLimit = !isUnlimited && followCount >= max;
-
-  return (
-    <section>
-      <h2 className="mb-1 text-lg font-semibold">
-        <Trans id="settings.billing.usage.title" comment="Usage section heading in billing settings">
-          Usage
-        </Trans>
-      </h2>
-      <p className="mb-4 text-sm text-muted">
-        <Trans id="settings.billing.usage.description" comment="Usage section description">
-          Your current resource usage on this plan.
-        </Trans>
-      </p>
-      <div className="rounded-lg border border-border-soft p-4">
-        <div className="mb-2 flex items-center justify-between text-sm">
-          <span>
-            <Trans id="settings.billing.usage.followedCompanies" comment="Followed companies usage label">
-              Followed companies
-            </Trans>
-          </span>
-          <span className={atLimit ? "font-semibold text-warning" : "text-muted"}>
-            {followCount} / {isUnlimited
-              ? t({ id: "settings.billing.usage.unlimited", comment: "Unlimited usage label", message: "Unlimited" })
-              : max}
-          </span>
-        </div>
-        {!isUnlimited && (
-          <div className="h-2 overflow-hidden rounded-full bg-border-soft">
-            <div
-              className={`h-full rounded-full transition-all ${atLimit ? "bg-warning" : "bg-primary"}`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        )}
-        {atLimit && (
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-warning">
-            <AlertTriangle size={12} />
-            <Trans id="settings.billing.usage.limitReached" comment="Warning when follow limit is reached">
-              You&apos;ve reached your follow limit. Upgrade to follow more companies.
-            </Trans>
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
-
 export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
   const { t } = useLingui();
   const { isLoggedIn } = useAuth();
@@ -144,15 +88,14 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
   const isFree = planInfo.plan === "free";
 
   const freePlanFeatures = [
-    t({ id: "settings.billing.free.f1", comment: "Free plan feature: follow limit", message: "Follow up to 5 companies" }),
+    t({ id: "settings.billing.free.f1", comment: "Free plan feature: star companies", message: "Star companies" }),
     t({ id: "settings.billing.free.f2", comment: "Free plan feature: search", message: "Full job search" }),
     t({ id: "settings.billing.free.f3", comment: "Free plan feature: save jobs", message: "Save jobs" }),
   ];
 
   const proPlanFeatures = [
-    t({ id: "settings.billing.pro.f1", comment: "Pro plan feature: unlimited follows", message: "Unlimited company follows" }),
-    t({ id: "settings.billing.pro.f2", comment: "Pro plan feature: alerts", message: "Email alerts for new postings" }),
-    t({ id: "settings.billing.pro.f3", comment: "Pro plan feature: everything free", message: "Everything in Free" }),
+    t({ id: "settings.billing.pro.f1", comment: "Pro plan feature: alerts", message: "Email alerts for new postings" }),
+    t({ id: "settings.billing.pro.f2", comment: "Pro plan feature: everything free", message: "Everything in Free" }),
   ];
 
   async function handleUpgrade() {
@@ -241,9 +184,6 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
           )}
         </div>
       </section>
-
-      {/* Usage */}
-      <UsageSection planInfo={planInfo} />
     </div>
   );
 }

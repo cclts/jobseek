@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Loader2, Code2, Search } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { getAllTechnologiesGrouped } from "@/lib/actions/taxonomy";
 import type { TechnologyGroup } from "@/lib/actions/taxonomy";
+import { findBestGuess } from "./best-guess";
 
 interface TechnologyModalProps {
   open: boolean;
@@ -22,9 +23,12 @@ export function TechnologyModal({
   onToggle,
   filters,
 }: TechnologyModalProps) {
+  const { t } = useLingui();
   const [groups, setGroups] = useState<TechnologyGroup[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [warning, setWarning] = useState("");
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -46,6 +50,12 @@ export function TechnologyModal({
     if (!open) setSearch("");
   }, [open]);
 
+  const showWarning = useCallback((msg: string) => {
+    clearTimeout(warningTimer.current);
+    setWarning(msg);
+    warningTimer.current = setTimeout(() => setWarning(""), 3000);
+  }, []);
+
   const filteredGroups = useMemo(() => {
     if (!groups) return null;
     const q = search.trim().toLowerCase();
@@ -62,6 +72,27 @@ export function TechnologyModal({
     }
     return result;
   }, [groups, search]);
+
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== "Enter" || !filteredGroups) return;
+      const leafItems = filteredGroups.flatMap((g) => g.technologies);
+      const result = findBestGuess(search, leafItems);
+      if (!result) return;
+      if ("match" in result) {
+        onToggle({ id: result.match.id, slug: result.match.slug, name: result.match.name });
+        setSearch("");
+        setWarning("");
+      } else {
+        showWarning(t({
+          id: "search.bestGuess.ambiguous",
+          comment: "Warning when Enter is pressed but multiple items match",
+          message: "Multiple matches — select one below",
+        }));
+      }
+    },
+    [filteredGroups, search, onToggle, showWarning, t],
+  );
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -93,11 +124,19 @@ export function TechnologyModal({
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Filter technologies..."
+                onChange={(e) => { setSearch(e.target.value); setWarning(""); }}
+                onKeyDown={handleSearchKeyDown}
+                placeholder={t({
+                  id: "search.technologyModal.searchPlaceholder",
+                  comment: "Placeholder for search input in technology modal",
+                  message: "Filter technologies...",
+                })}
                 className="w-full rounded-lg border border-border-soft bg-transparent py-2 pl-9 pr-3 text-sm placeholder:text-muted focus:border-primary/40 focus:outline-none"
               />
             </div>
+            {warning && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">{warning}</p>
+            )}
           </div>
 
           {/* Body */}

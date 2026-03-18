@@ -56,7 +56,7 @@ export default function CheckEmailPage() {
     setError("");
     const { error } = await authClient.sendVerificationEmail({
       email,
-      callbackURL: lp("/app"),
+      callbackURL: lp("/explore"),
     });
     setResending(false);
     if (error) {

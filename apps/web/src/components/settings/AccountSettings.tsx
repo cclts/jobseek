@@ -337,7 +337,7 @@ function ChangeEmailSection() {
     setLoading(true);
     const { error } = await authClient.changeEmail({
       newEmail,
-      callbackURL: lp("/app/settings/account"),
+      callbackURL: lp("/settings/account"),
     });
     setLoading(false);
     if (error) {
@@ -404,7 +404,7 @@ function ConnectedAccountsSection({ accounts, onDisconnect }: { accounts: Connec
     setError("");
     const result = await authClient.linkSocial({
       provider: provider as "github" | "google" | "linkedin",
-      callbackURL: lp("/app/settings/account"),
+      callbackURL: lp("/settings/account"),
     });
     if (result.error) {
       setError(result.error.message ?? t({ id: "settings.account.socials.connectError", comment: "Error when linking social account fails", message: "Failed to connect account" }));

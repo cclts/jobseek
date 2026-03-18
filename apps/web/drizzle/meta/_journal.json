@@ -442,6 +442,20 @@
       "when": 1775164800000,
       "tag": "0065_add_user_username",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1775251200000,
+      "tag": "0066_add_watchlist",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1775337600000,
+      "tag": "0067_add_dismissed_banners",
+      "breakpoints": true
     }
   ]
 }

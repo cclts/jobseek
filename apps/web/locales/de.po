@@ -1,17 +1,18 @@
+#
 msgid ""
 msgstr ""
-"POT-Creation-Date: 2026-02-18 14:57+0100\n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=utf-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"X-Generator: @lingui/cli\n"
-"Language: de\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-18 14:57+0100\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: \n"
+"X-Generator: @lingui/cli\n"
 
 #. CC right 1
 #. js-lingui-explicit-id
@@ -42,9 +43,16 @@ msgstr "(öffnet in neuem Tab)"
 #. Employee count range on company page
 #. js-lingui-explicit-id
 #. placeholder {0}: EMPLOYEE_RANGE_LABELS[company.employeeCountRange]
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:515
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:519
 msgid "company.page.employees"
 msgstr "{0} Mitarbeitende"
+
+#. Count of additional watchlists not shown
+#. js-lingui-explicit-id
+#. placeholder {0}: total - results.length
+#: src/components/watchlist/public-watchlist-search.tsx:127
+msgid "watchlists.explore.moreCount"
+msgstr "{0} weitere"
 
 #. Button to show remaining collapsed locations
 #. js-lingui-explicit-id
@@ -55,19 +63,19 @@ msgstr "{0} weitere"
 
 #. Free plan price display
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:203
+#: src/components/settings/BillingSettings.tsx:146
 msgid "settings.billing.plan.freePrice"
 msgstr "0 $ / Monat"
 
 #. Pro plan price display
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:209
+#: src/components/settings/BillingSettings.tsx:152
 msgid "settings.billing.plan.proPrice"
 msgstr "10 $ / Monat"
 
 #. Account bottom bar label
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:202
+#: src/components/AppHeader.tsx:204
 msgid "app.header.nav.account"
 msgstr "Konto"
 
@@ -79,13 +87,13 @@ msgstr "Konto"
 
 #. Aria label for user avatar menu
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:78
+#: src/components/AppHeader.tsx:77
 msgid "app.header.avatar.label"
 msgstr "Kontomenü"
 
 #. Active postings count on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:588
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:592
 msgid "company.page.active"
 msgstr "aktiv"
 
@@ -94,6 +102,12 @@ msgstr "aktiv"
 #: src/components/search/company-card.tsx:135
 msgid "search.card.active"
 msgstr "aktiv"
+
+#. Title for add companies modal
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-search-modal.tsx:208
+msgid "watchlists.companyModal.title"
+msgstr "Unternehmen hinzufügen"
 
 #. Placeholder in the add keyword input
 #. js-lingui-explicit-id
@@ -125,11 +139,11 @@ msgstr "Benachrichtigungen, die du steuerst"
 msgid "privacy.short.r5"
 msgstr "Alle Daten werden bei Übertragung und Speicherung verschlüsselt."
 
-#. Title for the all-languages modal in settings
+#. Option to show all industries
 #. js-lingui-explicit-id
-#: src/components/settings/JobLanguageModal.tsx:55
-msgid "settings.jobLanguages.modal.title"
-msgstr "Alle Sprachen"
+#: src/components/watchlist/company-search-modal.tsx:284
+msgid "watchlists.companyModal.allIndustries"
+msgstr "Alle Branchen"
 
 #. All languages option
 #. js-lingui-explicit-id
@@ -137,11 +151,11 @@ msgstr "Alle Sprachen"
 msgid "settings.general.jobLanguages.all"
 msgstr "Alle Sprachen"
 
-#. Title for the all-locations modal on company page
+#. Title for the all-languages modal in settings
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:112
-msgid "company.locationModal.title"
-msgstr "Alle Standorte"
+#: src/components/settings/JobLanguageModal.tsx:55
+msgid "settings.jobLanguages.modal.title"
+msgstr "Alle Sprachen"
 
 #. Button to open all-locations modal on company page
 #. js-lingui-explicit-id
@@ -149,17 +163,38 @@ msgstr "Alle Standorte"
 msgid "company.page.allLocations"
 msgstr "Alle Standorte"
 
+#. Title for the all-locations modal on company page
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:144
+msgid "company.locationModal.title"
+msgstr "Alle Standorte"
+
 #. Link to sign-in page from sign-up
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:203
+#: src/components/AuthForm.tsx:213
 msgid "auth.signUp.hasAccount"
 msgstr "Bereits ein Konto? <0>Anmelden</0>"
+
+#. Username is taken
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:276
+msgid "settings.account.username.taken"
+msgstr "Bereits vergeben"
 
 #. Any experience level
 #. js-lingui-explicit-id
 #: src/components/search/experience-modal.tsx:169
 msgid "search.experienceModal.any"
 msgstr "Beliebig"
+
+#. Toggle to show jobs from all companies
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx:334
+msgid "watchlists.view.anyCompany"
+msgstr "Alle Unternehmen"
+
+#~ msgid "app.header.nav.home"
+#~ msgstr "Startseite"
 
 #. MIT license section title
 #. js-lingui-explicit-id
@@ -191,17 +226,17 @@ msgstr "Bewerbungstracker"
 msgid "home.features.s1.p2.title"
 msgstr "Bewerbungstracker"
 
+#. Apply salary filter
+#. js-lingui-explicit-id
+#: src/components/search/salary-modal.tsx:312
+msgid "search.salaryModal.apply"
+msgstr "Anwenden"
+
 #. Apply button linking to original job posting
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:115
 msgid "search.detail.apply"
 msgstr "Bewerben"
-
-#. Apply salary filter
-#. js-lingui-explicit-id
-#: src/components/search/salary-modal.tsx:314
-msgid "search.salaryModal.apply"
-msgstr "Anwenden"
 
 #. Apply experience filter
 #. js-lingui-explicit-id
@@ -215,16 +250,28 @@ msgstr "Anwenden"
 msgid "indexing.ingestion.s3.body"
 msgstr "Als letztes Mittel parsen wir die Karriereseiten selbst, bevorzugen dabei die neuesten Einträge zuerst und stoppen, sobald bereits indexierte Stellen wieder auftauchen, anstatt jede Seite zu durchsuchen."
 
+#. Username too short hint
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:264
+msgid "settings.account.username.tooShort"
+msgstr "Mindestens 3 Zeichen"
+
+#. Username too long hint
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:266
+msgid "settings.account.username.tooLong"
+msgstr "Maximal 30 Zeichen"
+
+#. Username is available
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:274
+msgid "settings.account.username.available"
+msgstr "Verfügbar"
+
 #. Link back to sign-in from reset password
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:42
 msgid "auth.resetPassword.backToSignIn"
-msgstr "Zurück zur Anmeldung"
-
-#. Link back to sign-in after failed verification
-#. js-lingui-explicit-id
-#: app/[lang]/verify-email/page.tsx:68
-msgid "auth.verify.error.backToSignIn"
 msgstr "Zurück zur Anmeldung"
 
 #. Link back to sign-in from forgot password
@@ -237,6 +284,12 @@ msgstr "Zurück zur Anmeldung"
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/forgot-password/page.tsx:110
 msgid "auth.forgotPassword.backLink"
+msgstr "Zurück zur Anmeldung"
+
+#. Link back to sign-in after failed verification
+#. js-lingui-explicit-id
+#: app/[lang]/verify-email/page.tsx:68
+msgid "auth.verify.error.backToSignIn"
 msgstr "Zurück zur Anmeldung"
 
 #. Link text for browsing the repo
@@ -257,9 +310,21 @@ msgstr "Entwickelt für aktive Jobsuchende"
 msgid "terms.hero.description"
 msgstr "Mit der Nutzung von Job Seek stimmst du diesen Bedingungen zu. Hier eine verständliche Zusammenfassung."
 
+#. Cancel button in create watchlist dialog
+#. js-lingui-explicit-id
+#: src/components/watchlist/create-watchlist-dialog.tsx:162
+msgid "watchlists.create.cancel"
+msgstr "Abbrechen"
+
+#. Cancel delete watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:233
+msgid "watchlists.delete.cancel"
+msgstr "Abbrechen"
+
 #. Cancel delete button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:387
+#: src/components/settings/AccountSettings.tsx:516
 msgid "settings.account.delete.cancel"
 msgstr "Abbrechen"
 
@@ -271,21 +336,27 @@ msgstr "ändern"
 
 #. Change email section heading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:225
+#: src/components/settings/AccountSettings.tsx:354
 msgid "settings.account.email.title"
 msgstr "E-Mail ändern"
 
 #. Aria label for language switcher button
 #. js-lingui-explicit-id
-#: src/components/LocaleSwitcher.tsx:25
+#: src/components/LocaleSwitcher.tsx:26
 msgid "common.locale.switch"
 msgstr "Sprache ändern"
 
 #. Password section description
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:173
+#: src/components/settings/AccountSettings.tsx:174
 msgid "settings.account.password.description"
 msgstr "Ändere dein Passwort über einen sicheren E-Mail-Link."
+
+#. Heading after reset email is sent
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:58
+msgid "auth.forgotPassword.sent.title"
+msgstr "E-Mail prüfen"
 
 #. Heading after sign-up telling user to check email
 #. js-lingui-explicit-id
@@ -293,11 +364,11 @@ msgstr "Ändere dein Passwort über einen sicheren E-Mail-Link."
 msgid "auth.verify.checkEmail.title"
 msgstr "E-Mail überprüfen"
 
-#. Heading after reset email is sent
+#. Checking username availability
 #. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx:58
-msgid "auth.forgotPassword.sent.title"
-msgstr "E-Mail prüfen"
+#: src/components/settings/AccountSettings.tsx:272
+msgid "settings.account.username.checking"
+msgstr "Verfügbarkeit wird geprüft..."
 
 #. Theme settings description
 #. js-lingui-explicit-id
@@ -313,7 +384,7 @@ msgstr "Wählen Sie die Währung für Gehaltsfilter und Anzeige."
 
 #. Plan section description
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:196
+#: src/components/settings/BillingSettings.tsx:139
 msgid "settings.billing.plan.description"
 msgstr "Wählen Sie den Plan, der zu Ihnen passt."
 
@@ -337,11 +408,31 @@ msgstr "Wähle aus, in welchen Sprachen du Stellenanzeigen sehen möchtest."
 msgid "location.type.city"
 msgstr "Stadt"
 
+#. Button to remove all companies from watchlist
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx:352
+msgid "watchlists.view.clearAllCompanies"
+msgstr "Alle entfernen"
+
+#. Button to clear all active search filters
 #. Button to clear all active search filters
 #. js-lingui-explicit-id
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx:460
 #: src/components/search/search-toolbar.tsx:261
 msgid "search.filters.clearAll"
 msgstr "Alle löschen"
+
+#. Clear all selected companies button
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-search-modal.tsx:220
+msgid "watchlists.companyModal.clearAll"
+msgstr "Alle entfernen"
+
+#. Tooltip for clicking to edit watchlist title
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx:294
+msgid "watchlists.view.editTitle"
+msgstr "Klicken zum Umbenennen"
 
 #. Step 2 title
 #. js-lingui-explicit-id
@@ -355,6 +446,18 @@ msgstr "Client-APIs als Zweites."
 msgid "common.mobileMenu.close"
 msgstr "Menü schließen"
 
+#. Label for inactive/closed job postings on company page
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:658
+msgid "company.page.closed"
+msgstr "Geschlossen"
+
+#. Label for inactive/closed job postings on company card
+#. js-lingui-explicit-id
+#: src/components/search/company-card.tsx:157
+msgid "search.card.closed"
+msgstr "Geschlossen"
+
 #. CC license section title
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:71
@@ -367,17 +470,29 @@ msgstr "Sammlung von Stellenanzeigen (CC BY-NC 4.0)"
 msgid "home.pricing.pro.cta"
 msgstr "Demnächst verfügbar"
 
+#. Label for company selector in watchlist creation
+#. js-lingui-explicit-id
+#: src/components/watchlist/create-watchlist-dialog.tsx:117
+msgid "watchlists.create.companiesLabel"
+msgstr "Unternehmen"
+
 #. Section header for company suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:581
+#: src/components/search/search-bar.tsx:571
 msgid "search.bar.companies"
 msgstr "Unternehmen"
 
 #. Label for the company counter on the app home page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/progress/page.tsx:36
+#: app/[lang]/(app)/progress/page.tsx:36
 msgid "app.home.stats.companies"
 msgstr "Beobachtete Unternehmen"
+
+#. Button to open company search modal
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx:323
+msgid "watchlists.view.addCompany"
+msgstr "Unternehmen"
 
 #. Feature: company alerts title
 #. js-lingui-explicit-id
@@ -387,7 +502,7 @@ msgstr "Unternehmens-Benachrichtigungen"
 
 #. Confirm delete button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:380
+#: src/components/settings/AccountSettings.tsx:509
 msgid "settings.account.delete.confirm"
 msgstr "Löschen bestätigen"
 
@@ -399,13 +514,13 @@ msgstr "Passwort bestätigen"
 
 #. Connect social account button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:330
+#: src/components/settings/AccountSettings.tsx:459
 msgid "settings.account.socials.connect"
 msgstr "Verbinden"
 
 #. Connected accounts section heading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:305
+#: src/components/settings/AccountSettings.tsx:434
 msgid "settings.account.socials.title"
 msgstr "Verknüpfte Konten"
 
@@ -429,14 +544,14 @@ msgstr "Kontakt"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
+#: src/components/LicenseContent.tsx:18
+msgid "license.toc.title"
 msgstr "Inhalt"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:18
-msgid "license.toc.title"
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
 msgstr "Inhalt"
 
 #. Button to continue to app after verification
@@ -495,21 +610,45 @@ msgstr "Crawling-Zusicherungen"
 msgid "indexing.assurances.title"
 msgstr "Crawling-Zusicherungen"
 
+#. Label on the create watchlist card
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:73
+msgid "watchlists.card.create"
+msgstr "Erstellen"
+
+#. Submit button in create watchlist dialog
+#. js-lingui-explicit-id
+#: src/components/watchlist/create-watchlist-dialog.tsx:173
+msgid "watchlists.create.submit"
+msgstr "Erstellen"
+
 #. Sign-up page heading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:141
+#: src/components/AuthForm.tsx:149
 msgid "auth.signUp.title"
 msgstr "Konto erstellen"
 
+#. Button to create first watchlist
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:97
+msgid "watchlists.page.createFirst"
+msgstr "Watchlist erstellen"
+
+#. Title of the create watchlist dialog
+#. js-lingui-explicit-id
+#: src/components/watchlist/create-watchlist-dialog.tsx:78
+msgid "watchlists.create.title"
+msgstr "Watchlist erstellen"
+
 #. Sign-up button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:191
+#: src/components/AuthForm.tsx:201
 msgid "auth.signUp.button.loading"
 msgstr "Konto wird erstellt…"
 
 #. Badge on current plan card
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:65
+#: src/components/settings/BillingSettings.tsx:63
 msgid "settings.billing.currentPlan"
 msgstr "Aktuell"
 
@@ -519,21 +658,39 @@ msgstr "Aktuell"
 msgid "settings.theme.dark"
 msgstr "Dunkel"
 
+#. Delete watchlist tooltip
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:210
+msgid "watchlists.actions.delete"
+msgstr "Löschen"
+
+#. Confirm delete watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:243
+msgid "watchlists.delete.confirm"
+msgstr "Löschen"
+
 #. Delete account section heading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:363
+#: src/components/settings/AccountSettings.tsx:492
 msgid "settings.account.delete.title"
 msgstr "Konto löschen"
 
 #. Delete account button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:373
+#: src/components/settings/AccountSettings.tsx:502
 msgid "settings.account.delete.button"
 msgstr "Mein Konto löschen"
 
+#. Delete watchlist confirmation title
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:221
+msgid "watchlists.delete.title"
+msgstr "Watchlist löschen?"
+
 #. Delete button while loading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:379
+#: src/components/settings/AccountSettings.tsx:508
 msgid "settings.account.delete.deleting"
 msgstr "Löschen…"
 
@@ -549,11 +706,23 @@ msgstr "Details"
 msgid "search.zero.subtext"
 msgstr "Haben Sie das gesuchte Unternehmen nicht gefunden?"
 
+#. Disable alerts tooltip
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:189
+msgid "watchlists.actions.disableAlerts"
+msgstr "Benachrichtigungen deaktivieren"
+
 #. Disconnect social account button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:329
+#: src/components/settings/AccountSettings.tsx:458
 msgid "settings.account.socials.disconnect"
 msgstr "Trennen"
+
+#. Section title for discovering public watchlists
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx:73
+msgid "watchlists.explore.publicTitle"
+msgstr "Öffentliche Watchlists entdecken"
 
 #. Display currency settings section heading
 #. js-lingui-explicit-id
@@ -563,7 +732,7 @@ msgstr "Anzeigewährung"
 
 #. Link to sign-up page from sign-in
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:210
+#: src/components/AuthForm.tsx:220
 msgid "auth.signIn.noAccount"
 msgstr "Noch kein Konto? <0>Registrieren</0>"
 
@@ -583,17 +752,23 @@ msgstr "Dein Lieblingsunternehmen fehlt im Feed? Füge den Karriereseiten-Link e
 #. Placeholder for the company request input field
 #. Placeholder for the company request input field
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:45
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:45
+#: app/[lang]/(app)/explore/company-request-form.tsx:45
+#: app/[lang]/(app)/progress/company-request-form.tsx:45
 #: src/components/search/request-company.tsx:55
 msgid "app.home.request.placeholder"
 msgstr "z.B. Stripe, oder https://boards.greenhouse.io/stripe"
+
+#. Edit watchlist tooltip
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:168
+msgid "watchlists.actions.edit"
+msgstr "Bearbeiten"
 
 #. Email input label
 #. Email input label
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/forgot-password/page.tsx:93
-#: src/components/AuthForm.tsx:164
+#: src/components/AuthForm.tsx:173
 msgid "auth.field.email"
 msgstr "E-Mail"
 
@@ -603,17 +778,35 @@ msgstr "E-Mail"
 msgid "home.pricing.pro.f4"
 msgstr "E-Mail-Benachrichtigungen & Updates"
 
+#. Reason shown in upgrade modal when trying to enable alerts
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:139
+msgid "upgrade.reason.alerts"
+msgstr "E-Mail-Benachrichtigungen sind eine kostenpflichtige Funktion. Upgrade, um bei neuen Jobs in deiner Watchlist benachrichtigt zu werden."
+
 #. Pro plan feature: alerts
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:154
-msgid "settings.billing.pro.f2"
-msgstr "E-Mail-Benachrichtigungen bei neuen Stellen"
+#: src/components/settings/BillingSettings.tsx:97
+msgid "settings.billing.pro.f1"
+msgstr "Unbegrenzt Unternehmen folgen"
+
+#. Email or username input label for sign-in
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx:174
+msgid "auth.field.emailOrUsername"
+msgstr "E-Mail oder Benutzername"
 
 #. Heading when email is successfully verified
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:82
 msgid "auth.verify.success.title"
 msgstr "E-Mail bestätigt"
+
+#. Enable alerts tooltip
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:190
+msgid "watchlists.actions.enableAlerts"
+msgstr "Benachrichtigungen aktivieren"
 
 #. Forgot password page subtitle
 #. js-lingui-explicit-id
@@ -641,9 +834,9 @@ msgstr "Jedes Wiederholungsfenster nutzt exponentielles Backoff, damit wir einen
 
 #. Pro plan feature: everything free
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:155
-msgid "settings.billing.pro.f3"
-msgstr "Alles aus dem kostenlosen Plan"
+#: src/components/settings/BillingSettings.tsx:98
+msgid "settings.billing.pro.f2"
+msgstr "E-Mail-Benachrichtigungen bei neuen Stellen"
 
 #. Feature section 1 eyebrow text
 #. js-lingui-explicit-id
@@ -659,33 +852,39 @@ msgstr "Erfahrung"
 
 #. Label for experience filter in advanced search
 #. js-lingui-explicit-id
-#: src/components/search/advanced-search-panel.tsx:171
+#: src/components/search/advanced-search-panel.tsx:165
 msgid "search.advanced.experience"
 msgstr "Erfahrung"
 
+#. Explore nav icon tooltip
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:54
+msgid "app.header.nav.explore"
+msgstr "Entdecken"
+
 #. Generic email change error
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:215
+#: src/components/settings/AccountSettings.tsx:344
 msgid "settings.account.email.error"
 msgstr "E-Mail-Änderung fehlgeschlagen"
 
 #. Error when linking social account fails
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:281
+#: src/components/settings/AccountSettings.tsx:410
 msgid "settings.account.socials.connectError"
 msgstr "Konto konnte nicht verbunden werden"
 
 #. Generic account deletion error
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:354
+#: src/components/settings/AccountSettings.tsx:483
 msgid "settings.account.delete.error"
 msgstr "Konto konnte nicht gelöscht werden"
 
 #. Error when unlinking social account fails
 #. Error when unlinking social account fails
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:292
-#: src/components/settings/AccountSettings.tsx:297
+#: src/components/settings/AccountSettings.tsx:421
+#: src/components/settings/AccountSettings.tsx:426
 msgid "settings.account.socials.disconnectError"
 msgstr "Konto konnte nicht getrennt werden"
 
@@ -703,15 +902,21 @@ msgstr "Passwort konnte nicht zurückgesetzt werden. Der Link ist möglicherweis
 
 #. Generic password reset error
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:160
+#: src/components/settings/AccountSettings.tsx:161
 msgid "settings.account.password.error"
 msgstr "Zurücksetzungs-E-Mail konnte nicht gesendet werden"
 
 #. Generic set password error
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:71
+#: src/components/settings/AccountSettings.tsx:72
 msgid "settings.account.password.setError"
 msgstr "Passwort konnte nicht gesetzt werden"
+
+#. Generic username update error
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:252
+msgid "settings.account.username.error"
+msgstr "Benutzername konnte nicht aktualisiert werden"
 
 #. Nav link: Features
 #. Nav link: Features
@@ -721,9 +926,33 @@ msgstr "Passwort konnte nicht gesetzt werden"
 msgid "common.nav.features"
 msgstr "Funktionen"
 
+#. Button to add a filter to watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-filter-editor.tsx:201
+msgid "watchlists.filters.add"
+msgstr "Filter"
+
+#. Placeholder for industry filter search
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-search-modal.tsx:272
+msgid "watchlists.companyModal.industrySearch"
+msgstr "Branchen filtern..."
+
+#. Placeholder for search input in technology modal
+#. js-lingui-explicit-id
+#: src/components/search/technology-modal.tsx:129
+msgid "search.technologyModal.searchPlaceholder"
+msgstr "Technologien filtern..."
+
+#. Section title for filters in watchlist view
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-filter-editor.tsx:143
+msgid "watchlists.view.filters"
+msgstr "Filter"
+
 #. Toggle button for advanced search filters panel
 #. js-lingui-explicit-id
-#: src/components/search/advanced-search-panel.tsx:138
+#: src/components/search/advanced-search-panel.tsx:132
 msgid "search.advanced.toggle"
 msgstr "Filter"
 
@@ -744,41 +973,17 @@ msgstr "Relevante Stellen schneller finden"
 msgid "home.hero.title"
 msgstr "Relevante Stellen schneller finden."
 
-#. Follow button on company card
-#. js-lingui-explicit-id
-#: src/components/search/follow-button.tsx:55
-msgid "search.card.follow"
-msgstr "Folgen"
-
 #. Feature: company alerts description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:132
 msgid "home.features.s1.p1.description"
 msgstr "Folge Wunscharbeitgebern und werde benachrichtigt, wenn neue Stellen erscheinen."
 
-#. Free plan feature: follow limit
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:147
-msgid "settings.billing.free.f1"
-msgstr "Bis zu 5 Unternehmen folgen"
-
 #. Link to follow Job Seek on LinkedIn
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/progress/page.tsx:73
+#: app/[lang]/(app)/progress/page.tsx:73
 msgid "app.home.followLinkedIn"
 msgstr "Folge uns auf LinkedIn"
-
-#. Followed companies usage label
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:105
-msgid "settings.billing.usage.followedCompanies"
-msgstr "Verfolgte Unternehmen"
-
-#. Following button on company card (user is following this company)
-#. js-lingui-explicit-id
-#: src/components/search/follow-button.tsx:51
-msgid "search.card.following"
-msgstr "Abonniert"
 
 #. Aria label for footer navigation
 #. js-lingui-explicit-id
@@ -806,14 +1011,14 @@ msgstr "Passwort vergessen?"
 
 #. Forgot password link on sign-in page
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:184
+#: src/components/AuthForm.tsx:194
 msgid "auth.signIn.forgotPassword"
 msgstr "Passwort vergessen?"
 
 #. Founded year on company page
 #. js-lingui-explicit-id
 #. placeholder {0}: company.foundedYear
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:522
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:526
 msgid "company.page.founded"
 msgstr "Gegründet {0}"
 
@@ -825,13 +1030,13 @@ msgstr "Kostenlos"
 
 #. Free plan name
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:202
+#: src/components/settings/BillingSettings.tsx:145
 msgid "settings.billing.plan.free"
 msgstr "Kostenlos"
 
 #. Free plan feature: search
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:148
+#: src/components/settings/BillingSettings.tsx:92
 msgid "settings.billing.free.f2"
 msgstr "Vollständige Jobsuche"
 
@@ -853,7 +1058,7 @@ msgstr "Jetzt starten"
 
 #. Sign-up page subtitle
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:146
+#: src/components/AuthForm.tsx:154
 msgid "auth.signUp.subtitle"
 msgstr "Erste Schritte mit Job Seek"
 
@@ -869,6 +1074,18 @@ msgstr "GitHub"
 msgid "notFound.goHome"
 msgstr "Zur Startseite"
 
+#. Dismiss tip banner button
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-tip-banner.tsx:57
+msgid "watchlists.tip.dismiss"
+msgstr "Verstanden"
+
+#. Dismiss upgrade modal
+#. js-lingui-explicit-id
+#: src/components/ui/upgrade-modal.tsx:66
+msgid "upgrade.modal.dismiss"
+msgstr "Verstanden"
+
 #. Step 3 title
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:129
@@ -880,12 +1097,6 @@ msgstr "Behutsames Seiten-Parsing."
 #: src/components/ui/FormField.tsx:35
 msgid "form.password.hide"
 msgstr "Passwort verbergen"
-
-#. Home nav icon tooltip
-#. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:56
-msgid "app.header.nav.home"
-msgstr "Startseite"
 
 #. Nav link: How do we index jobs?
 #. Nav link: How do we index jobs?
@@ -954,7 +1165,7 @@ msgstr "Wenn du ungewöhnliches Crawler-Verhalten bemerkst, es vorziehst, dass w
 
 #. Year postings count on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:590
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:594
 msgid "company.page.yearCount"
 msgstr "im letzten Jahr"
 
@@ -970,12 +1181,18 @@ msgstr "im letzten Jahr"
 msgid "indexing.hero.eyebrow"
 msgstr "Indexierungsrichtlinie"
 
+#. Industry filter label
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-search-modal.tsx:260
+msgid "watchlists.companyModal.industry"
+msgstr "Branche"
+
 #. Error when company request input is too long
 #. Error when company request input is too long
 #. Error when company request input is too long
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:16
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:16
+#: app/[lang]/(app)/explore/company-request-form.tsx:16
+#: app/[lang]/(app)/progress/company-request-form.tsx:16
 #: src/components/search/request-company.tsx:17
 msgid "app.home.request.error.tooLong"
 msgstr "Eingabe ist zu lang."
@@ -984,8 +1201,8 @@ msgstr "Eingabe ist zu lang."
 #. Error when company request input is too short
 #. Error when company request input is too short
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:15
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:15
+#: app/[lang]/(app)/explore/company-request-form.tsx:15
+#: app/[lang]/(app)/progress/company-request-form.tsx:15
 #: src/components/search/request-company.tsx:16
 msgid "app.home.request.error.tooShort"
 msgstr "Eingabe ist zu kurz."
@@ -1001,6 +1218,18 @@ msgstr "Ungültiger Link"
 #: app/[lang]/verify-email/page.tsx:28
 msgid "auth.verify.error.invalidLink"
 msgstr "Ungültiger Bestätigungslink"
+
+#. Singular job count on watchlist card
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:31
+msgid "watchlists.card.jobSingular"
+msgstr "Job"
+
+#. Singular job count in public watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx:107
+msgid "watchlists.explore.jobSingular"
+msgstr "Job"
 
 #. TOC: Job data (CC BY-NC 4.0)
 #. js-lingui-explicit-id
@@ -1022,7 +1251,7 @@ msgstr "Stellensprachen"
 
 #. Label for the job postings counter on the app home page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/progress/page.tsx:45
+#: app/[lang]/(app)/progress/page.tsx:45
 msgid "app.home.stats.jobPostings"
 msgstr "Stellenanzeigen"
 
@@ -1046,7 +1275,7 @@ msgstr "Job Seek ist eine Suchmaschine sowohl für aktive Kandidaten als auch f�
 
 #. Main app page subtitle explaining the app is being built
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/progress/page.tsx:26
+#: app/[lang]/(app)/progress/page.tsx:26
 msgid "app.home.subtitle"
 msgstr "Job Seek wird aktiv entwickelt. Bleib dran für Updates!"
 
@@ -1056,11 +1285,35 @@ msgstr "Job Seek wird aktiv entwickelt. Bleib dran für Updates!"
 msgid "license.hero.description"
 msgstr "Die Codebasis von Job Seek ist Open Source unter MIT. Die von uns gesammelten und aufbereiteten Stellendaten stehen unter Creative Commons BY-NC 4.0. Nachfolgend eine verständliche Zusammenfassung — bitte lies die vollständigen Lizenzen für die genauen Bedingungen."
 
+#. Plural job count on watchlist card
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:32
+msgid "watchlists.card.jobPlural"
+msgstr "Jobs"
+
+#. Plural job count in public watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx:108
+msgid "watchlists.explore.jobPlural"
+msgstr "Jobs"
+
+#. Job count label in watchlist view
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx:242
+msgid "watchlists.jobList.jobCount"
+msgstr "Jobs"
+
 #. Hero eyebrow text above the title
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:25
 msgid "home.hero.eyebrow"
 msgstr "Den Puls des Arbeitsmarkts im Blick behalten."
+
+#. Add keyword filter
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-filter-editor.tsx:132
+msgid "watchlists.filters.keyword"
+msgstr "Stichwort"
 
 #. Feature: kill tab routine title
 #. js-lingui-explicit-id
@@ -1080,6 +1333,18 @@ msgstr "Sprache"
 msgid "search.empty.heading"
 msgstr "Grösste Unternehmen"
 
+#. Time range option: last day
+#. js-lingui-explicit-id
+#: src/components/watchlist/time-range-selector.tsx:19
+msgid "watchlists.timeRange.day"
+msgstr "Letzter Tag"
+
+#. Time range option: last hour
+#. js-lingui-explicit-id
+#: src/components/watchlist/time-range-selector.tsx:11
+msgid "watchlists.timeRange.hour"
+msgstr "Letzte Stunde"
+
 #. Last updated date label
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:28
@@ -1092,6 +1357,12 @@ msgstr "Zuletzt aktualisiert:"
 msgid "privacy.hero.lastUpdated"
 msgstr "Zuletzt aktualisiert:"
 
+#. Time range option: last week
+#. js-lingui-explicit-id
+#: src/components/watchlist/time-range-selector.tsx:27
+msgid "watchlists.timeRange.week"
+msgstr "Letzte Woche"
+
 #. Hero secondary call-to-action
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:40
@@ -1100,13 +1371,13 @@ msgstr "Mehr erfahren"
 
 #. Section header for seniority suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:471
+#: src/components/search/search-bar.tsx:461
 msgid "search.bar.level"
 msgstr "Stufe"
 
 #. Label for seniority/level filter in advanced search
 #. js-lingui-explicit-id
-#: src/components/search/advanced-search-panel.tsx:154
+#: src/components/search/advanced-search-panel.tsx:148
 msgid "search.advanced.level"
 msgstr "Stufe"
 
@@ -1146,21 +1417,21 @@ msgstr "Hell"
 
 #. Manage subscription button loading state
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:238
+#: src/components/settings/BillingSettings.tsx:181
 msgid "settings.billing.managing"
 msgstr "Wird geladen\\u2026"
 
-#. Label for location filter in advanced search
+#. Add location filter
 #. js-lingui-explicit-id
-#: src/components/search/advanced-search-panel.tsx:146
-msgid "search.advanced.location"
+#: src/components/watchlist/watchlist-filter-editor.tsx:133
+msgid "watchlists.filters.location"
 msgstr "Standort"
 
-#. Section header for location suggestions in search bar
+#. Label for location filter in advanced search
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:541
-msgid "search.bar.locations"
-msgstr "Standorte"
+#: src/components/search/advanced-search-panel.tsx:140
+msgid "search.advanced.location"
+msgstr "Standort"
 
 #. Locations heading in job detail
 #. js-lingui-explicit-id
@@ -1168,15 +1439,23 @@ msgstr "Standorte"
 msgid "search.detail.locations"
 msgstr "Standorte"
 
+#. Section header for location suggestions in search bar
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx:531
+msgid "search.bar.locations"
+msgstr "Standorte"
+
+#. Login button label
 #. Login button label
 #. Login button label
 #. Login button label
 #. Login button label
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:166
-#: src/components/AppHeader.tsx:214
-#: src/components/settings/AccountSettings.tsx:38
-#: src/components/settings/BillingSettings.tsx:32
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:75
+#: src/components/AppHeader.tsx:168
+#: src/components/AppHeader.tsx:216
+#: src/components/settings/AccountSettings.tsx:39
+#: src/components/settings/BillingSettings.tsx:30
 msgid "common.auth.login"
 msgstr "Anmelden"
 
@@ -1186,17 +1465,55 @@ msgstr "Anmelden"
 msgid "home.features.s1.p2.description"
 msgstr "Erfasse, wo du dich beworben hast, Status, Kontakte und nächste Schritte."
 
+#. Make watchlist private tooltip
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:177
+msgid "watchlists.actions.makePrivate"
+msgstr "Privat machen"
+
+#. Make watchlist public tooltip
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:178
+msgid "watchlists.actions.makePublic"
+msgstr "Öffentlich machen"
+
 #. Manage subscription button label
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:239
+#: src/components/settings/BillingSettings.tsx:182
 msgid "settings.billing.manage"
 msgstr "Abo verwalten"
 
 #. Connected accounts section description
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:308
+#: src/components/settings/AccountSettings.tsx:437
 msgid "settings.account.socials.description"
 msgstr "Verwalte deine verknüpften Social-Media-Konten."
+
+#. Singular mirror count
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx:115
+msgid "watchlists.explore.mirrorSingular"
+msgstr "Kopie"
+
+#. Mirror watchlist tooltip
+#. Mirror watchlist tooltip
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:199
+#: src/components/watchlist/watchlist-action-bar.tsx:257
+msgid "watchlists.actions.mirror"
+msgstr "Spiegeln"
+
+#. Tip banner explaining that public watchlists can be mirrored
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-tip-banner.tsx:45
+msgid "watchlists.tip.mirror"
+msgstr "Spiegle jede öffentliche Watchlist, um sie zu deiner eigenen zu machen — passe Unternehmen an, ändere Filter oder aktiviere Benachrichtigungen."
+
+#. Plural mirror count
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx:116
+msgid "watchlists.explore.mirrorPlural"
+msgstr "Kopien"
 
 #. Expand location pill list to show all
 #. js-lingui-explicit-id
@@ -1204,10 +1521,34 @@ msgstr "Verwalte deine verknüpften Social-Media-Konten."
 msgid "company.page.showMore"
 msgstr "mehr"
 
+#. Warning when Enter is pressed but multiple items match
+#. Warning when Enter is pressed but multiple items match
+#. Warning when Enter is pressed but multiple items match
+#. Warning when Enter is pressed but multiple items match
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:123
+#: src/components/search/location-search-modal.tsx:108
+#: src/components/search/occupation-modal.tsx:109
+#: src/components/search/technology-modal.tsx:87
+msgid "search.bestGuess.ambiguous"
+msgstr "Mehrere Treffer — wähle einen aus"
+
+#. Placeholder for watchlist name input
+#. js-lingui-explicit-id
+#: src/components/watchlist/create-watchlist-dialog.tsx:103
+msgid "watchlists.create.namePlaceholder"
+msgstr "Meine Watchlist"
+
 #. Name input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:155
+#: src/components/AuthForm.tsx:163
 msgid "auth.field.name"
+msgstr "Name"
+
+#. Label for watchlist name input
+#. js-lingui-explicit-id
+#: src/components/watchlist/create-watchlist-dialog.tsx:95
+msgid "watchlists.create.nameLabel"
 msgstr "Name"
 
 #. TOC: Need to reach us?
@@ -1224,7 +1565,7 @@ msgstr "Kontakt aufnehmen?"
 
 #. New email input label
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:237
+#: src/components/settings/AccountSettings.tsx:366
 msgid "settings.account.email.label"
 msgstr "Neue E-Mail"
 
@@ -1236,7 +1577,7 @@ msgstr "Neues Passwort"
 
 #. New password input label
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:95
+#: src/components/settings/AccountSettings.tsx:96
 msgid "settings.account.password.newLabel"
 msgstr "Neues Passwort"
 
@@ -1246,6 +1587,24 @@ msgstr "Neues Passwort"
 msgid "license.data.r2"
 msgstr "Keine kommerzielle Weiterverbreitung oder Weiterverkauf ohne Genehmigung."
 
+#. Empty state when no filters are set
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-filter-editor.tsx:270
+msgid "watchlists.filters.empty"
+msgstr "Keine Filter gesetzt. Füge Filter hinzu, um die Ergebnisse einzugrenzen."
+
+#. No industries match search
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-search-modal.tsx:302
+msgid "watchlists.companyModal.noIndustries"
+msgstr "Keine Branchen gefunden."
+
+#. Empty state when no jobs match the time range
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx:253
+msgid "watchlists.jobList.empty"
+msgstr "Keine Jobs gefunden."
+
 #. No languages match search in all-languages modal
 #. js-lingui-explicit-id
 #: src/components/settings/JobLanguageModal.tsx:91
@@ -1254,19 +1613,19 @@ msgstr "Keine Sprachen entsprechen deiner Suche."
 
 #. No locations match search in location modal
 #. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:134
+#: src/components/search/location-search-modal.tsx:170
 msgid "search.locationModal.noResults"
 msgstr "Keine Standorte gefunden."
 
 #. No locations match search in all-locations modal
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:149
+#: src/components/search/location-modal.tsx:185
 msgid "company.locationModal.noResults"
 msgstr "Keine Standorte entsprechen Ihrer Suche."
 
 #. No postings found message on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:636
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:640
 msgid "company.page.noResults"
 msgstr "Keine passenden Stellenanzeigen gefunden."
 
@@ -1278,13 +1637,13 @@ msgstr "Keine Ergebnisse für „{query}\" gefunden"
 
 #. No occupations match search in occupation modal
 #. js-lingui-explicit-id
-#: src/components/search/occupation-modal.tsx:175
+#: src/components/search/occupation-modal.tsx:212
 msgid "search.occupationModal.noResults"
 msgstr "Keine Berufe gefunden."
 
 #. Empty state message when no jobs are saved
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/saved/saved-page.tsx:99
+#: app/[lang]/(app)/saved/saved-page.tsx:99
 msgid "saved.empty"
 msgstr "Noch keine gespeicherten Stellen. Speichern Sie Stellen aus den Suchergebnissen, um sie hier zu finden."
 
@@ -1296,7 +1655,7 @@ msgstr "Keine Erfahrungsstufen verfügbar."
 
 #. No technologies available or matching search
 #. js-lingui-explicit-id
-#: src/components/search/technology-modal.tsx:111
+#: src/components/search/technology-modal.tsx:150
 msgid "search.technologyModal.noResults"
 msgstr "Keine Technologien gefunden."
 
@@ -1306,21 +1665,33 @@ msgstr "Keine Technologien gefunden."
 msgid "license.code.r3"
 msgstr "Keine Gewährleistung — Nutzung auf eigenes Risiko."
 
+#. No results message when searching public watchlists
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx:137
+msgid "watchlists.explore.noResults"
+msgstr "Keine Watchlists gefunden."
+
+#. Empty state when user has no watchlists
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:82
+msgid "watchlists.page.empty"
+msgstr "Noch keine Watchlists. Erstelle eine, um Jobs von deinen Lieblingsunternehmen zu verfolgen."
+
 #. Warning shown when the request was saved in DB but GitHub issue creation failed
 #. Warning shown when the request was saved in DB but GitHub issue creation failed
 #. Warning shown when the request was saved in DB but GitHub issue creation failed
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:91
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:91
+#: app/[lang]/(app)/explore/company-request-form.tsx:91
+#: app/[lang]/(app)/progress/company-request-form.tsx:91
 #: src/components/search/request-company.tsx:101
 msgid "app.home.request.issueWarning"
 msgstr "Hinweis: Wir konnten kein Tracking-Issue erstellen, aber Ihre Anfrage wurde gespeichert."
 
-#. Dismiss upgrade banner button
+#. Add occupation filter
 #. js-lingui-explicit-id
-#: src/components/UpgradeBanner.tsx:55
-msgid "plans.followLimit.ok"
-msgstr "Ok"
+#: src/components/watchlist/watchlist-filter-editor.tsx:134
+msgid "watchlists.filters.occupation"
+msgstr "Berufsfeld"
 
 #. Cookie banner accept button
 #. js-lingui-explicit-id
@@ -1339,6 +1710,12 @@ msgstr "Sobald wir eine einzelne Stellenanzeige abrufen, speichern wir nur die s
 #: src/components/HowWeIndexContent.tsx:79
 msgid "indexing.assurances.i3.title"
 msgstr "Eine Seite pro Minute."
+
+#. Username invalid characters hint
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:268
+msgid "settings.account.username.invalidChars"
+msgstr "Nur Kleinbuchstaben, Zahlen und Bindestriche (nicht am Anfang/Ende)"
 
 #. Aria label for mobile menu button
 #. js-lingui-explicit-id
@@ -1396,26 +1773,26 @@ msgstr "Unsere Haltung zur Automatisierung"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:27
-msgid "indexing.toc.overview"
-msgstr "Überblick"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:22
 msgid "license.toc.overview"
 msgstr "Überblick"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:24
-msgid "indexing.toc.ariaLabel"
-msgstr "Seiteninhalt"
+#: src/components/HowWeIndexContent.tsx:27
+msgid "indexing.toc.overview"
+msgstr "Überblick"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:19
 msgid "license.toc.ariaLabel"
+msgstr "Seiteninhalt"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:24
+msgid "indexing.toc.ariaLabel"
 msgstr "Seiteninhalt"
 
 #. Heading shown on the 404 page
@@ -1432,27 +1809,27 @@ msgstr "Sammle alle interessanten Startups in einem Dashboard, statt mit Chrome-
 
 #. Password input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:173
+#: src/components/AuthForm.tsx:183
 msgid "auth.field.password"
 msgstr "Passwort"
 
 #. Password section heading
 #. Password section heading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:82
-#: src/components/settings/AccountSettings.tsx:170
+#: src/components/settings/AccountSettings.tsx:83
+#: src/components/settings/AccountSettings.tsx:171
 msgid "settings.account.password.title"
 msgstr "Passwort"
 
 #. Success message after password reset request
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:162
+#: src/components/settings/AccountSettings.tsx:163
 msgid "settings.account.password.success"
 msgstr "Link zum Zurücksetzen des Passworts gesendet. Bitte überprüfe dein Postfach. Es kann einige Minuten dauern, bis die E-Mail ankommt."
 
 #. Success message after setting password
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:73
+#: src/components/settings/AccountSettings.tsx:74
 msgid "settings.account.password.setSuccess"
 msgstr "Passwort erfolgreich gesetzt."
 
@@ -1470,7 +1847,7 @@ msgstr "Passwörter stimmen nicht überein"
 
 #. Description below the heading explaining users can request a company
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/progress/page.tsx:59
+#: app/[lang]/(app)/progress/page.tsx:59
 msgid "app.home.request.description"
 msgstr "Geben Sie einen Firmennamen oder eine Karriereseiten-URL ein und wir beginnen, deren Stellenanzeigen zu verfolgen."
 
@@ -1488,29 +1865,41 @@ msgstr "pro Monat"
 
 #. Delete account section description
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:366
+#: src/components/settings/AccountSettings.tsx:495
 msgid "settings.account.delete.description"
 msgstr "Lösche dein Konto und alle zugehörigen Daten dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden."
 
 #. Plan section heading in billing settings
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:191
+#: src/components/settings/BillingSettings.tsx:134
 msgid "settings.billing.plan.title"
 msgstr "Abo"
+
+#~ msgid "plans.followLimit.banner"
+#~ msgstr "Sie folgen {followCount} von {followMax} Unternehmen im kostenlosen Plan."
+
+#~ msgid "plans.followLimit.ok"
+#~ msgstr "Ok"
+
+#~ msgid "plans.followLimit.reached"
+#~ msgstr "Sie haben das Folge-Limit des kostenlosen Plans erreicht"
+
+#~ msgid "plans.followLimit.upgrade"
+#~ msgstr "Auf Pro upgraden"
 
 #. Error when company request input is empty
 #. Error when company request input is empty
 #. Error when company request input is empty
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:14
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:14
+#: app/[lang]/(app)/explore/company-request-form.tsx:14
+#: app/[lang]/(app)/progress/company-request-form.tsx:14
 #: src/components/search/request-company.tsx:15
 msgid "app.home.request.error.empty"
 msgstr "Bitte geben Sie einen Firmennamen oder eine URL ein."
 
 #. Error when email field is empty
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:205
+#: src/components/settings/AccountSettings.tsx:334
 msgid "settings.account.email.required"
 msgstr "Bitte gib eine neue E-Mail-Adresse ein"
 
@@ -1522,7 +1911,7 @@ msgstr "Bitte gib ein neues Passwort ein"
 
 #. Error when new password is empty
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:64
+#: src/components/settings/AccountSettings.tsx:65
 msgid "settings.account.password.newRequired"
 msgstr "Bitte gib ein Passwort ein"
 
@@ -1530,8 +1919,8 @@ msgstr "Bitte gib ein Passwort ein"
 #. Error when company request input has no alphanumeric characters
 #. Error when company request input has no alphanumeric characters
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:17
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:17
+#: app/[lang]/(app)/explore/company-request-form.tsx:17
+#: app/[lang]/(app)/progress/company-request-form.tsx:17
 #: src/components/search/request-company.tsx:18
 msgid "app.home.request.error.invalid"
 msgstr "Bitte geben Sie einen gültigen Firmennamen oder eine URL ein."
@@ -1544,19 +1933,19 @@ msgstr "Bitte geben Sie Ihre E-Mail-Adresse ein"
 
 #. Error when required fields are empty
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:45
+#: src/components/AuthForm.tsx:46
 msgid "auth.error.fieldsRequired"
 msgstr "Bitte fülle alle Felder aus"
 
 #. Message when user must log in to see account settings
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:33
+#: src/components/settings/AccountSettings.tsx:34
 msgid "settings.account.loginRequired"
 msgstr "Bitte melde dich an, um deine Kontoeinstellungen zu verwalten."
 
 #. Message when user must log in to see billing settings
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:27
+#: src/components/settings/BillingSettings.tsx:25
 msgid "settings.billing.loginRequired"
 msgstr "Bitte melden Sie sich an, um Ihre Abrechnungseinstellungen zu verwalten."
 
@@ -1572,18 +1961,18 @@ msgstr "Verweise uns auf eine beliebige Karriereseite oder ein Notion-Jobboard u
 msgid "search.detail.notFound"
 msgstr "Stelle nicht gefunden."
 
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:101
+msgid "home.pricing.eyebrow"
+msgstr "Preise"
+
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:61
 #: src/components/MobileMenu.tsx:86
 msgid "common.nav.pricing"
-msgstr "Preise"
-
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:101
-msgid "home.pricing.eyebrow"
 msgstr "Preise"
 
 #. Privacy policy page eyebrow
@@ -1609,6 +1998,12 @@ msgstr "Datenschutz bei Job Seek"
 msgid "privacy.meta.title"
 msgstr "Datenschutzrichtlinie"
 
+#. Reason shown in upgrade modal when trying to make watchlist private
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:125
+msgid "upgrade.reason.makePrivate"
+msgstr "Private Watchlists sind eine kostenpflichtige Funktion. Upgrade, um deine Watchlists vor anderen zu verbergen."
+
 #. Pro tier name
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:68
@@ -1617,7 +2012,7 @@ msgstr "Pro"
 
 #. Pro plan name
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:208
+#: src/components/settings/BillingSettings.tsx:151
 msgid "settings.billing.plan.pro"
 msgstr "Pro"
 
@@ -1628,6 +2023,12 @@ msgstr "Pro"
 #: src/components/MobileMenu.tsx:76
 msgid "common.nav.product"
 msgstr "Produkt"
+
+#. Checkbox label to make watchlist public
+#. js-lingui-explicit-id
+#: src/components/watchlist/create-watchlist-dialog.tsx:133
+msgid "watchlists.create.publicLabel"
+msgstr "Öffentlich (für andere sichtbar)"
 
 #. Fallback credit text for public domain artwork
 #. js-lingui-explicit-id
@@ -1717,8 +2118,8 @@ msgstr "Standort entfernen"
 #. Success message after submitting a company request, with link to GitHub issue for tracking
 #. Success message after submitting a company request, with link to GitHub issue for tracking
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:65
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:65
+#: app/[lang]/(app)/explore/company-request-form.tsx:65
+#: app/[lang]/(app)/progress/company-request-form.tsx:65
 #: src/components/search/request-company.tsx:75
 msgid "app.home.request.success.withIssue"
 msgstr "Anfrage eingereicht! Verfolgen Sie den Fortschritt hier:"
@@ -1727,8 +2128,8 @@ msgstr "Anfrage eingereicht! Verfolgen Sie den Fortschritt hier:"
 #. Success message when request was saved but GitHub issue could not be created
 #. Success message when request was saved but GitHub issue could not be created
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:70
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:70
+#: app/[lang]/(app)/explore/company-request-form.tsx:70
+#: app/[lang]/(app)/progress/company-request-form.tsx:70
 #: src/components/search/request-company.tsx:80
 msgid "app.home.request.success.noIssue"
 msgstr "Anfrage eingereicht! Wir werden dieses Unternehmen in Kürze verfolgen."
@@ -1741,7 +2142,7 @@ msgstr "Erneut senden in {cooldown}s"
 
 #. Reset password button during cooldown with seconds remaining
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:183
+#: src/components/settings/AccountSettings.tsx:184
 msgid "settings.account.password.cooldown"
 msgstr "Erneut senden in {cooldown}s"
 
@@ -1753,7 +2154,7 @@ msgstr "Bestätigungs-E-Mail erneut senden"
 
 #. Reset salary filter
 #. js-lingui-explicit-id
-#: src/components/search/salary-modal.tsx:308
+#: src/components/search/salary-modal.tsx:306
 msgid "search.salaryModal.reset"
 msgstr "Zurücksetzen"
 
@@ -1789,43 +2190,49 @@ msgstr "Robots, Attribution und TDM-Reservation."
 
 #. Label for role/occupation filter in advanced search
 #. js-lingui-explicit-id
-#: src/components/search/advanced-search-panel.tsx:150
+#: src/components/search/advanced-search-panel.tsx:144
 msgid "search.advanced.role"
 msgstr "Beruf"
 
 #. Section header for occupation suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:436
+#: src/components/search/search-bar.tsx:426
 msgid "search.bar.roles"
 msgstr "Berufe"
 
 #. Label for salary filter in advanced search
 #. js-lingui-explicit-id
-#: src/components/search/advanced-search-panel.tsx:165
+#: src/components/search/advanced-search-panel.tsx:159
 msgid "search.advanced.salary"
 msgstr "Gehalt"
 
 #. Title for salary filter modal
 #. js-lingui-explicit-id
-#: src/components/search/salary-modal.tsx:240
+#: src/components/search/salary-modal.tsx:238
 msgid "search.salaryModal.title"
 msgstr "Gehaltsspanne"
 
 #. Aria label for save button
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/saved/saved-page.tsx:161
+#: app/[lang]/(app)/saved/saved-page.tsx:161
 msgid "saved.save.ariaLabel"
+msgstr "Job speichern"
+
+#. Save job aria label
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx:218
+msgid "watchlists.jobList.save"
 msgstr "Job speichern"
 
 #. Tooltip for save job button
 #. js-lingui-explicit-id
-#: src/components/search/save-button.tsx:21
+#: src/components/search/save-button.tsx:22
 msgid "search.save.save"
 msgstr "Job speichern"
 
 #. Free plan feature: save jobs
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:149
+#: src/components/settings/BillingSettings.tsx:93
 msgid "settings.billing.free.f3"
 msgstr "Jobs speichern"
 
@@ -1837,13 +2244,13 @@ msgstr "Speichere deine Filter für schnelle Überprüfungen, ohne alles neu ein
 
 #. Saved items nav icon tooltip
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:57
+#: src/components/AppHeader.tsx:56
 msgid "app.header.nav.saved"
 msgstr "Gespeichert"
 
 #. Title of the saved jobs page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/saved/saved-page.tsx:113
+#: app/[lang]/(app)/saved/saved-page.tsx:113
 msgid "saved.title"
 msgstr "Gespeicherte Stellen"
 
@@ -1865,15 +2272,21 @@ msgstr "Gespeicherte Suchen"
 msgid "home.features.s1.p3.title"
 msgstr "Gespeicherte Suchen"
 
+#. Username save button while loading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:304
+msgid "settings.account.username.saving"
+msgstr "Speichern..."
+
 #. Email save button while loading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:247
+#: src/components/settings/AccountSettings.tsx:376
 msgid "settings.account.email.saving"
 msgstr "Speichern…"
 
 #. Search nav icon tooltip
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:59
+#: src/components/AppHeader.tsx:58
 msgid "app.header.nav.search"
 msgstr "Suche"
 
@@ -1884,6 +2297,18 @@ msgstr "Suche"
 msgid "company.page.searchPlaceholder"
 msgstr "Suchen bei {0}..."
 
+#. Placeholder for company search in watchlist creation
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-selector.tsx:91
+msgid "watchlists.companySelector.placeholder"
+msgstr "Unternehmen suchen..."
+
+#. Placeholder for company search in modal
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-search-modal.tsx:242
+msgid "watchlists.companyModal.searchPlaceholder"
+msgstr "Unternehmen suchen..."
+
 #. Placeholder for search input in all-languages modal
 #. js-lingui-explicit-id
 #: src/components/settings/JobLanguageModal.tsx:77
@@ -1892,33 +2317,45 @@ msgstr "Sprachen suchen…"
 
 #. Placeholder for search input in global location modal
 #. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:116
+#: src/components/search/location-search-modal.tsx:149
 msgid "search.locationModal.searchPlaceholder"
 msgstr "Standorte suchen..."
 
 #. Placeholder for search input in all-locations modal
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:131
+#: src/components/search/location-modal.tsx:164
 msgid "company.locationModal.searchPlaceholder"
 msgstr "Standorte suchen…"
 
 #. Back to search results link on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:537
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:541
 msgid "company.page.backToSearch"
 msgstr "Suchergebnisse"
 
 #. Placeholder for search input in occupation modal
 #. js-lingui-explicit-id
-#: src/components/search/occupation-modal.tsx:157
+#: src/components/search/occupation-modal.tsx:191
 msgid "search.occupationModal.searchPlaceholder"
 msgstr "Berufe suchen..."
 
+#. Placeholder for public watchlist search input
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx:84
+msgid "watchlists.explore.searchPlaceholder"
+msgstr "Watchlists suchen..."
+
 #. Placeholder for the main search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:382
+#: src/components/search/search-bar.tsx:372
 msgid "search.bar.placeholder"
 msgstr "Suchen…"
+
+#~ msgid "search.card.follow"
+#~ msgstr "Folgen"
+
+#~ msgid "search.card.following"
+#~ msgstr "Abonniert"
 
 #. Title for the seniority level selection modal
 #. js-lingui-explicit-id
@@ -1928,19 +2365,19 @@ msgstr "Stufe auswählen"
 
 #. Title for the global location selection modal
 #. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:97
+#: src/components/search/location-search-modal.tsx:129
 msgid "search.locationModal.title"
 msgstr "Standort auswählen"
 
 #. Title for the occupation selection modal
 #. js-lingui-explicit-id
-#: src/components/search/occupation-modal.tsx:138
+#: src/components/search/occupation-modal.tsx:171
 msgid "search.occupationModal.title"
 msgstr "Beruf auswählen"
 
 #. Title for the technology selection modal
 #. js-lingui-explicit-id
-#: src/components/search/technology-modal.tsx:78
+#: src/components/search/technology-modal.tsx:109
 msgid "search.technologyModal.title"
 msgstr "Technologien auswählen"
 
@@ -1964,15 +2401,9 @@ msgstr "Link senden"
 
 #. Reset password button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:184
+#: src/components/settings/AccountSettings.tsx:185
 msgid "settings.account.password.send"
 msgstr "Link senden"
-
-#. Resend button while sending
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/check-email/page.tsx:96
-msgid "auth.verify.resending"
-msgstr "Wird gesendet…"
 
 #. Send reset link button while loading
 #. js-lingui-explicit-id
@@ -1980,11 +2411,23 @@ msgstr "Wird gesendet…"
 msgid "auth.forgotPassword.button.loading"
 msgstr "Wird gesendet..."
 
+#. Resend button while sending
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/check-email/page.tsx:96
+msgid "auth.verify.resending"
+msgstr "Wird gesendet…"
+
 #. Reset password button while loading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:181
+#: src/components/settings/AccountSettings.tsx:182
 msgid "settings.account.password.sending"
 msgstr "Senden…"
+
+#. Add seniority filter
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-filter-editor.tsx:135
+msgid "watchlists.filters.seniority"
+msgstr "Erfahrungsstufe"
 
 #. Reset password page heading
 #. js-lingui-explicit-id
@@ -1994,7 +2437,7 @@ msgstr "Neues Passwort setzen"
 
 #. Set password button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:106
+#: src/components/settings/AccountSettings.tsx:107
 msgid "settings.account.password.set"
 msgstr "Passwort setzen"
 
@@ -2006,21 +2449,39 @@ msgstr "Lege die Frequenz pro Unternehmen fest, damit du von neuen Stellen erfä
 
 #. Set password button while loading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:105
+#: src/components/settings/AccountSettings.tsx:106
 msgid "settings.account.password.setting"
 msgstr "Setzen…"
 
 #. Settings page heading
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/settings/layout.tsx:20
+#: app/[lang]/(app)/settings/layout.tsx:20
 msgid "settings.title"
 msgstr "Einstellungen"
 
 #. Settings nav icon tooltip
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:58
+#: src/components/AppHeader.tsx:57
 msgid "app.header.nav.settings"
 msgstr "Einstellungen"
+
+#~ msgid "settings.billing.pro.f3"
+#~ msgstr "Alles aus dem kostenlosen Plan"
+
+#~ msgid "settings.billing.usage.description"
+#~ msgstr "Ihre aktuelle Ressourcennutzung in diesem Plan."
+
+#~ msgid "settings.billing.usage.followedCompanies"
+#~ msgstr "Verfolgte Unternehmen"
+
+#~ msgid "settings.billing.usage.limitReached"
+#~ msgstr "Sie haben Ihr Folge-Limit erreicht. Upgraden Sie, um mehr Unternehmen zu folgen."
+
+#~ msgid "settings.billing.usage.title"
+#~ msgstr "Nutzung"
+
+#~ msgid "settings.billing.usage.unlimited"
+#~ msgstr "Unbegrenzt"
 
 #. Collapse location pill list
 #. js-lingui-explicit-id
@@ -2060,43 +2521,55 @@ msgstr "Anmelden"
 
 #. Sign-in page heading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:142
+#: src/components/AuthForm.tsx:150
 msgid "auth.signIn.title"
 msgstr "Anmelden"
 
 #. Sign-in submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:195
+#: src/components/AuthForm.tsx:205
 msgid "auth.signIn.button.submit"
 msgstr "Anmelden"
 
+#. Prompt for non-logged-in users to sign in to create watchlists
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:66
+msgid "watchlists.page.loginPrompt"
+msgstr "Melde dich an, um deine eigenen Watchlists zu erstellen und zu verwalten."
+
+#. Mirror watchlist tooltip for non-logged-in users
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:258
+msgid "watchlists.actions.mirrorSignIn"
+msgstr "Anmelden zum Spiegeln"
+
 #. Sign out dropdown menu item
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:111
+#: src/components/AppHeader.tsx:110
 msgid "app.header.signOut"
 msgstr "Abmelden"
 
 #. Sign-up submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:192
+#: src/components/AuthForm.tsx:202
 msgid "auth.signUp.button.submit"
 msgstr "Registrieren"
 
 #. Generic sign-in error fallback
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:83
+#: src/components/AuthForm.tsx:91
 msgid "auth.signIn.error.generic"
 msgstr "Anmeldung fehlgeschlagen"
 
 #. Generic sign-up error fallback
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:63
+#: src/components/AuthForm.tsx:65
 msgid "auth.signUp.error.generic"
 msgstr "Registrierung fehlgeschlagen"
 
 #. Sign-in button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:194
+#: src/components/AuthForm.tsx:204
 msgid "auth.signIn.button.loading"
 msgstr "Anmeldung läuft…"
 
@@ -2134,11 +2607,35 @@ msgstr "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
 #. Generic error when company request fails
 #. Generic error when company request fails
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:18
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:18
+#: app/[lang]/(app)/explore/company-request-form.tsx:18
+#: app/[lang]/(app)/progress/company-request-form.tsx:18
 #: src/components/search/request-company.tsx:19
 msgid "app.home.request.error.unknown"
 msgstr "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+
+#. Generic error creating watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/create-watchlist-dialog.tsx:148
+msgid "watchlists.create.error"
+msgstr "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+
+#. Star button label on company card
+#. js-lingui-explicit-id
+#: src/components/search/star-button.tsx:20
+msgid "search.card.star"
+msgstr "Markieren"
+
+#. Free plan feature: star companies
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:91
+msgid "settings.billing.free.f1"
+msgstr "Bis zu 5 Unternehmen folgen"
+
+#. Starred state label for star button on company card
+#. js-lingui-explicit-id
+#: src/components/search/star-button.tsx:19
+msgid "search.card.starred"
+msgstr "Markiert"
 
 #. Free tier CTA
 #. js-lingui-explicit-id
@@ -2156,8 +2653,8 @@ msgstr "Behalte die Kontrolle"
 #. Submit button for the company request form
 #. Submit button for the company request form
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:57
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:57
+#: app/[lang]/(app)/explore/company-request-form.tsx:57
+#: app/[lang]/(app)/progress/company-request-form.tsx:57
 #: src/components/search/request-company.tsx:67
 msgid "app.home.request.submit"
 msgstr "Absenden"
@@ -2166,8 +2663,8 @@ msgstr "Absenden"
 #. Submit button while request is in progress
 #. Submit button while request is in progress
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:56
-#: app/[lang]/(app)/app/progress/company-request-form.tsx:56
+#: app/[lang]/(app)/explore/company-request-form.tsx:56
+#: app/[lang]/(app)/progress/company-request-form.tsx:56
 #: src/components/search/request-company.tsx:66
 msgid "app.home.request.submitting"
 msgstr "Wird gesendet..."
@@ -2197,25 +2694,31 @@ msgstr "Abonnement"
 
 #. Aria label for switching to dark mode
 #. js-lingui-explicit-id
-#: src/components/ThemeToggleButton.tsx:26
+#: src/components/ThemeToggleButton.tsx:27
 msgid "common.theme.switchToDark"
 msgstr "Zum dunklen Modus wechseln"
 
 #. Aria label for switching to light mode
 #. js-lingui-explicit-id
-#: src/components/ThemeToggleButton.tsx:25
+#: src/components/ThemeToggleButton.tsx:26
 msgid "common.theme.switchToLight"
 msgstr "Zum hellen Modus wechseln"
 
 #. Section header for technology suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:506
+#: src/components/search/search-bar.tsx:496
 msgid "search.bar.technologies"
 msgstr "Technologien"
 
+#. Add technology filter
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-filter-editor.tsx:136
+msgid "watchlists.filters.technology"
+msgstr "Technologie"
+
 #. Label for technology filter in advanced search
 #. js-lingui-explicit-id
-#: src/components/search/advanced-search-panel.tsx:159
+#: src/components/search/advanced-search-panel.tsx:153
 msgid "search.advanced.technology"
 msgstr "Technologie"
 
@@ -2301,6 +2804,24 @@ msgstr "Dieser Link zum Zurücksetzen des Passworts ist ungültig oder abgelaufe
 msgid "common.cookies.message"
 msgstr "Diese Seite verwendet Cookies ausschließlich für Authentifizierung und grundlegende Funktionen."
 
+#. Username is reserved hint
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:270
+msgid "settings.account.username.reserved"
+msgstr "Dieser Benutzername ist reserviert"
+
+#. Delete watchlist confirmation description
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx:226
+msgid "watchlists.delete.description"
+msgstr "Diese Watchlist und alle zugehörigen Einstellungen werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+
+#. Date divider label for today
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx:76
+msgid "watchlists.jobList.today"
+msgstr "Heute"
+
 #. Feature section 1 description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:125
@@ -2319,9 +2840,15 @@ msgstr "Transparenz ist uns wichtig, daher ist der Code für unseren Job-Link-Er
 msgid "error.retryButton"
 msgstr "Erneut versuchen"
 
+#. Placeholder for filter value input
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-filter-editor.tsx:241
+msgid "watchlists.filters.inputPlaceholder"
+msgstr "Slug eingeben und Enter drücken"
+
 #. Main app page heading
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/progress/page.tsx:21
+#: app/[lang]/(app)/progress/page.tsx:21
 msgid "app.home.title"
 msgstr "In aktiver Entwicklung"
 
@@ -2331,18 +2858,6 @@ msgstr "In aktiver Entwicklung"
 msgid "privacy.rights.intro"
 msgstr "Nach DSGVO kannst du eine Kopie deiner Daten anfordern, sie korrigieren oder löschen lassen, sie exportieren oder der Verarbeitung widersprechen. Löschst du dein Konto, werden alle Daten innerhalb von 30 Tagen gelöscht."
 
-#. Unlimited usage label
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:111
-msgid "settings.billing.usage.unlimited"
-msgstr "Unbegrenzt"
-
-#. Pro plan feature: unlimited follows
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:153
-msgid "settings.billing.pro.f1"
-msgstr "Unbegrenzt Unternehmen folgen"
-
 #. Pro feature: unlimited subscriptions
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:80
@@ -2351,55 +2866,91 @@ msgstr "Unbegrenzte Unternehmensabonnements"
 
 #. Aria label for unsave button
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/saved/saved-page.tsx:161
+#: app/[lang]/(app)/saved/saved-page.tsx:161
 msgid "saved.unsave.ariaLabel"
+msgstr "Job entfernen"
+
+#. Unsave job aria label
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx:217
+msgid "watchlists.jobList.unsave"
 msgstr "Job entfernen"
 
 #. Tooltip for unsave job button
 #. js-lingui-explicit-id
-#: src/components/search/save-button.tsx:20
+#: src/components/search/save-button.tsx:21
 msgid "search.save.unsave"
 msgstr "Job entfernen"
 
 #. Email save button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:248
+#: src/components/settings/AccountSettings.tsx:377
 msgid "settings.account.email.save"
 msgstr "E-Mail aktualisieren"
 
 #. Change email section description
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:228
+#: src/components/settings/AccountSettings.tsx:357
 msgid "settings.account.email.description"
 msgstr "Aktualisiere die mit deinem Konto verknüpfte E-Mail-Adresse."
 
-#. Link to upgrade to Pro plan
+#. Username save button
 #. js-lingui-explicit-id
-#: src/components/UpgradeBanner.tsx:63
-msgid "plans.followLimit.upgrade"
-msgstr "Auf Pro upgraden"
+#: src/components/settings/AccountSettings.tsx:305
+msgid "settings.account.username.save"
+msgstr "Benutzername aktualisieren"
+
+#. Upgrade button in modal
+#. js-lingui-explicit-id
+#: src/components/ui/upgrade-modal.tsx:74
+msgid "upgrade.modal.upgrade"
+msgstr "Upgrade"
+
+#. Upgrade modal title
+#. js-lingui-explicit-id
+#: src/components/ui/upgrade-modal.tsx:48
+msgid "upgrade.modal.title"
+msgstr "Upgrade erforderlich"
 
 #. Upgrade button label
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:228
+#: src/components/settings/BillingSettings.tsx:171
 msgid "settings.billing.upgrade"
 msgstr "Auf Pro upgraden"
 
 #. Upgrading button loading state
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:227
+#: src/components/settings/BillingSettings.tsx:170
 msgid "settings.billing.upgrading"
 msgstr "Upgrade l\\u00e4uft\\u2026"
 
-#. Usage section heading in billing settings
+#. Fallback username for watchlist owner
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:93
-msgid "settings.billing.usage.title"
-msgstr "Nutzung"
+#: src/components/watchlist/public-watchlist-search.tsx:106
+msgid "watchlists.explore.unknownUser"
+msgstr "Nutzer"
+
+#. Username section heading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:282
+msgid "settings.account.username.title"
+msgstr "Benutzername"
+
+#. Username input label
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:294
+msgid "settings.account.username.label"
+msgstr "Benutzername"
+
+#. Username updated success message
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:256
+msgid "settings.account.username.success"
+msgstr "Benutzername aktualisiert."
 
 #. Success message after email change request
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:217
+#: src/components/settings/AccountSettings.tsx:346
 msgid "settings.account.email.success"
 msgstr "Bestätigungs-E-Mail gesendet. Bitte überprüfe dein Postfach. Es kann einige Minuten dauern, bis die E-Mail ankommt."
 
@@ -2420,6 +2971,30 @@ msgstr "Bestätigung fehlgeschlagen"
 #: app/[lang]/verify-email/page.tsx:48
 msgid "auth.verify.loading"
 msgstr "E-Mail wird bestätigt…"
+
+#. Warning tooltip when watchlist limit reached on create card
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:55
+msgid "watchlists.card.limitReached"
+msgstr "Watchlist-Limit erreicht"
+
+#. Title of the watchlists exploration page
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:57
+msgid "watchlists.page.title"
+msgstr "Watchlists"
+
+#. Back to watchlists link
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx:262
+msgid "watchlists.view.back"
+msgstr "Watchlists"
+
+#. Watchlists nav icon tooltip
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:55
+msgid "app.header.nav.watchlists"
+msgstr "Watchlists"
 
 #. What the service does
 #. js-lingui-explicit-id
@@ -2483,13 +3058,13 @@ msgstr "Wir nutzen eine Handvoll Drittanbieter für Anmeldung, Hosting und Speic
 
 #. Sign-in page subtitle
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:147
+#: src/components/AuthForm.tsx:155
 msgid "auth.signIn.subtitle"
 msgstr "Willkommen zurück"
 
 #. Heading above the company request input on the app home page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/progress/page.tsx:54
+#: app/[lang]/(app)/progress/page.tsx:54
 msgid "app.home.request.heading"
 msgstr "Welches Unternehmen sollen wir verfolgen?"
 
@@ -2502,6 +3077,12 @@ msgstr "Welches Unternehmen sollen wir verfolgen?"
 #: src/components/search/experience-modal.tsx:172
 msgid "search.experienceModal.years"
 msgstr "Jahre"
+
+#. Date divider label for yesterday
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx:77
+msgid "watchlists.jobList.yesterday"
+msgstr "Gestern"
 
 #. Account deletion
 #. js-lingui-explicit-id
@@ -2535,33 +3116,27 @@ msgstr "Du musst mindestens 16 Jahre alt sein, um Job Seek zu nutzen."
 
 #. Set password description for OAuth users
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:85
+#: src/components/settings/AccountSettings.tsx:86
 msgid "settings.account.password.setDescription"
 msgstr "Du hast dich mit einem Social-Media-Konto angemeldet. Setze ein Passwort, um E-Mail-Änderungen und zusätzliche Sicherheit zu ermöglichen."
 
-#. Banner shown when user hits free plan follow limit
+#. Error when free plan watchlist limit is reached
 #. js-lingui-explicit-id
-#: src/components/UpgradeBanner.tsx:42
-msgid "plans.followLimit.banner"
-msgstr "Sie folgen {followCount} von {followMax} Unternehmen im kostenlosen Plan."
+#: src/components/watchlist/create-watchlist-dialog.tsx:141
+msgid "watchlists.create.limitReached"
+msgstr "Du hast dein Watchlist-Limit erreicht. Upgrade, um mehr zu erstellen."
 
-#. Tooltip when follow limit is reached
+#. Reason shown in upgrade modal when watchlist creation limit reached
 #. js-lingui-explicit-id
-#: src/components/search/follow-button.tsx:22
-msgid "plans.followLimit.reached"
-msgstr "Sie haben das Folge-Limit des kostenlosen Plans erreicht"
+#: src/components/watchlist/watchlist-card.tsx:45
+msgid "upgrade.reason.watchlistLimit"
+msgstr "Du hast dein Watchlist-Limit erreicht. Upgrade deinen Plan, um weitere Watchlists zu erstellen."
 
-#. Warning when follow limit is reached
+#. Reason shown in upgrade modal when mirror limit reached
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:126
-msgid "settings.billing.usage.limitReached"
-msgstr "Sie haben Ihr Folge-Limit erreicht. Upgraden Sie, um mehr Unternehmen zu folgen."
-
-#. Usage section description
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx:98
-msgid "settings.billing.usage.description"
-msgstr "Ihre aktuelle Ressourcennutzung in diesem Plan."
+#: src/components/watchlist/watchlist-action-bar.tsx:93
+msgid "upgrade.reason.mirrorLimit"
+msgstr "Du hast dein Watchlist-Limit erreicht. Upgrade deinen Plan, um weitere Watchlists zu spiegeln."
 
 #. Description after successful email verification
 #. js-lingui-explicit-id
@@ -2580,3 +3155,9 @@ msgstr "Dein Passwort wurde zurückgesetzt. Du kannst dich jetzt mit deinem neue
 #: src/components/PrivacyPolicyContent.tsx:54
 msgid "privacy.rights.title"
 msgstr "Deine Rechte"
+
+#. Username section description
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:285
+msgid "settings.account.username.description"
+msgstr "Dein eindeutiger Name für deine öffentliche Profil-URL."

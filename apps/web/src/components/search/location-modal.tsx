@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Search, Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -9,6 +9,7 @@ import type { GroupedCompanyLocations, CompanyRegionGroup } from "@/lib/actions/
 import type { FilterItem } from "./filter-bar";
 import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
+import { findBestGuess } from "./best-guess";
 
 /** Threshold: show region sub-headers when a country has more cities than this. */
 const REGION_THRESHOLD = 8;
@@ -34,6 +35,8 @@ export function LocationModal({
   const [groups, setGroups] = useState<GroupedCompanyLocations[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [warning, setWarning] = useState("");
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const activeLocationIds = useMemo(
     () => new Set(filters.filter((f) => f.kind === "location").map((f) => f.id)),
@@ -85,18 +88,47 @@ export function LocationModal({
       .filter((g): g is GroupedCompanyLocations => g !== null);
   }, [groups, search]);
 
-  function toggleLocation(loc: { id: number; slug: string; name: string; type: string }) {
+  const toggleLocation = useCallback((loc: { id: number; slug: string; name: string; type: string }) => {
     if (activeLocationIds.has(loc.id)) {
       onFiltersChange(filters.filter((f) => !(f.kind === "location" && f.id === loc.id)));
     } else {
       onFiltersChange([...filters, { kind: "location", id: loc.id, slug: loc.slug, name: loc.name, type: loc.type }]);
     }
-  }
+  }, [activeLocationIds, filters, onFiltersChange]);
 
   /** Total city count across all regions in a country. */
   function countCities(country: GroupedCompanyLocations) {
     return country.regions.reduce((sum, r) => sum + r.locations.length, 0);
   }
+
+  const showWarning = useCallback((msg: string) => {
+    clearTimeout(warningTimer.current);
+    setWarning(msg);
+    warningTimer.current = setTimeout(() => setWarning(""), 3000);
+  }, []);
+
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      const leafItems = filtered.flatMap((c) =>
+        c.regions.flatMap((r) => r.locations),
+      );
+      const result = findBestGuess(search, leafItems);
+      if (!result) return;
+      if ("match" in result) {
+        toggleLocation(result.match);
+        setSearch("");
+        setWarning("");
+      } else {
+        showWarning(t({
+          id: "search.bestGuess.ambiguous",
+          comment: "Warning when Enter is pressed but multiple items match",
+          message: "Multiple matches — select one below",
+        }));
+      }
+    },
+    [filtered, search, toggleLocation, showWarning, t],
+  );
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -127,7 +159,8 @@ export function LocationModal({
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setWarning(""); }}
+                onKeyDown={handleSearchKeyDown}
                 placeholder={t({
                   id: "company.locationModal.searchPlaceholder",
                   comment: "Placeholder for search input in all-locations modal",
@@ -136,6 +169,9 @@ export function LocationModal({
                 className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted"
               />
             </div>
+            {warning && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">{warning}</p>
+            )}
           </div>
 
           {/* Body */}

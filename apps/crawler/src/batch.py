@@ -30,8 +30,8 @@ from src.core.description_store import content_hash, upload_description, upload_
 from src.core.enum_normalize import normalize_employment_type
 from src.core.experience_extract import extract_experience
 from src.core.location_resolve import LocationResolver
-from src.core.monitor import monitor_one
-from src.core.monitors import api_monitor_types
+from src.core.monitor import monitor_one, monitor_one_stream
+from src.core.monitors import api_monitor_types, get_stream_fn
 from src.core.occupation_resolve import load_occupation_ids, match_occupation
 from src.core.salary_extract import extract_salary_unified
 from src.core.scrape import scrape_one
@@ -92,6 +92,25 @@ async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
         await _location_resolver.load(pool)
         log.info("batch.location_resolver.loaded", entries=_location_resolver.entry_count)
     return _location_resolver
+
+
+async def _flush_location_misses(
+    resolver: LocationResolver,
+    pool: asyncpg.Pool,
+) -> None:
+    """Drain location misses from the resolver and upsert to taxonomy_miss."""
+    raw_misses = resolver.drain_location_misses()
+    if not raw_misses:
+        return
+    seen: set[str] = set()
+    deduped_raw: list[str] = []
+    deduped_sample: list[str] = []
+    for raw, sample in raw_misses:
+        if raw not in seen:
+            seen.add(raw)
+            deduped_raw.append(raw)
+            deduped_sample.append(sample)
+    await pool.execute(_UPSERT_LOCATION_MISSES, deduped_raw, deduped_sample)
 
 
 async def _get_technology_ids(pool: asyncpg.Pool) -> dict[str, int]:
@@ -241,8 +260,10 @@ async def _resolve_locations(
     """
     results = resolver.resolve(locations, job_location_type, posting_language)
 
-    # DB fallback for non-core locale names (rare path)
+    # DB fallback for non-core locale names (rare path).
+    # Clear location_misses before retry — only misses from the final attempt matter.
     if await resolver.backfill_misses():
+        resolver.drain_location_misses()
         results = resolver.resolve(locations, job_location_type, posting_language)
 
     if not results:
@@ -448,6 +469,70 @@ SET consecutive_failures = consecutive_failures + 1,
 WHERE id = $1
 """
 
+_DIFF_BATCH = """
+WITH discovered AS (
+  SELECT unnest($1::text[]) AS url
+),
+touched AS (
+  UPDATE job_posting
+  SET last_seen_at = now(), missing_count = 0
+  FROM discovered d
+  WHERE job_posting.board_id = $2
+    AND job_posting.is_active = true
+    AND job_posting.source_url = d.url
+  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
+),
+relisted AS (
+  UPDATE job_posting
+  SET is_active = true, missing_count = 0,
+      last_seen_at = now(),
+      next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
+  FROM discovered d
+  WHERE job_posting.board_id = $2
+    AND job_posting.is_active = false
+    AND job_posting.source_url = d.url
+  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
+),
+new_urls AS (
+  SELECT d.url
+  FROM discovered d
+  LEFT JOIN job_posting jp
+    ON jp.source_url = d.url AND jp.board_id = $2
+  WHERE jp.id IS NULL
+)
+SELECT 'touched' AS action, id::text, source_url AS url, description_r2_hash FROM touched
+UNION ALL
+SELECT 'relisted' AS action, id::text, source_url AS url, description_r2_hash FROM relisted
+UNION ALL
+SELECT 'new', NULL, url, NULL::bigint FROM new_urls
+"""
+
+_MARK_GONE = """
+WITH discovered AS (
+  SELECT unnest($1::text[]) AS url
+)
+UPDATE job_posting
+SET missing_count = missing_count + 1,
+    is_active = CASE
+        WHEN missing_count + 1 >= $3 THEN false
+        ELSE is_active
+    END,
+    next_scrape_at = CASE
+        WHEN missing_count + 1 >= $3 THEN NULL
+        ELSE next_scrape_at
+    END
+WHERE job_posting.board_id = $2
+  AND job_posting.is_active = true
+  AND job_posting.source_url NOT IN (SELECT url FROM discovered)
+RETURNING job_posting.id, job_posting.source_url
+"""
+
+_EXTEND_BOARD_LEASE = """
+UPDATE job_board
+SET leased_until = now() + interval '10 minutes'
+WHERE id = $1
+"""
+
 _INSERT_RICH_JOB = """
 INSERT INTO job_posting
     (company_id, board_id,
@@ -540,6 +625,15 @@ SET description_r2_hash = $2,
     technology_ids = COALESCE($3, technology_ids),
     to_be_enriched = true
 WHERE id = $1::uuid
+"""
+
+_UPSERT_LOCATION_MISSES = """
+INSERT INTO taxonomy_miss (taxonomy, raw_value, sample_value)
+SELECT 'location', * FROM unnest($1::text[], $2::text[])
+ON CONFLICT (taxonomy, raw_value) DO UPDATE SET
+    hit_count = taxonomy_miss.hit_count + 1,
+    last_seen_at = now()
+WHERE taxonomy_miss.status = 'pending'
 """
 
 _FETCH_DUE_JOB_POSTINGS = """
@@ -1003,6 +1097,22 @@ class BatchResult:
     item_durations: list[float] = field(default_factory=list)
 
 
+class DeadlineExtender:
+    """Shared between work item and pool to extend the timeout deadline.
+
+    The streaming processor calls ``pulse()`` after each batch.  The pool
+    loop checks the event to decide whether to renew the deadline or
+    declare a true timeout.
+    """
+
+    def __init__(self):
+        self._event = asyncio.Event()
+
+    def pulse(self):
+        """Signal that the work item is still making progress."""
+        self._event.set()
+
+
 @dataclass
 class WorkItem:
     """A single unit of work for the continuous worker pool."""
@@ -1011,6 +1121,8 @@ class WorkItem:
     kind: str  # "monitor" | "scrape"
     run: Callable[[], Awaitable[tuple[bool, float]]]
     id: str = ""  # board ID or posting ID — used for lease release
+    on_timeout: Callable[[], Awaitable[None]] | None = None
+    deadline_extender: DeadlineExtender | None = None
 
 
 # ── Claim Queries (Worker Pool) ──────────────────────────────────────
@@ -1097,14 +1209,37 @@ async def claim_monitor_work(
     items: list[WorkItem] = []
     for board in rows:
         domain = board["throttle_key"]
-        items.append(
-            WorkItem(
-                domain=domain,
-                kind="monitor",
-                run=functools.partial(_process_one_board, board, pool, http),
-                id=str(board["id"]),
+        board_id = str(board["id"])
+        on_timeout = functools.partial(_record_timeout, board_id, pool)
+        stream_fn = get_stream_fn(board["crawler_type"])
+        if stream_fn is not None:
+            extender = DeadlineExtender()
+            items.append(
+                WorkItem(
+                    domain=domain,
+                    kind="monitor",
+                    run=functools.partial(
+                        _process_one_board_streaming,
+                        board,
+                        pool,
+                        http,
+                        extender,
+                    ),
+                    id=board_id,
+                    on_timeout=on_timeout,
+                    deadline_extender=extender,
+                )
             )
-        )
+        else:
+            items.append(
+                WorkItem(
+                    domain=domain,
+                    kind="monitor",
+                    run=functools.partial(_process_one_board, board, pool, http),
+                    id=board_id,
+                    on_timeout=on_timeout,
+                )
+            )
     return items
 
 
@@ -1188,6 +1323,362 @@ async def release_rejected(pool: asyncpg.Pool, items: list[WorkItem]) -> None:
 
 
 # ── Monitor Batch ────────────────────────────────────────────────────
+
+
+async def _record_timeout(board_id: str, pool: asyncpg.Pool) -> None:
+    """Record a timeout failure for a board (called from WorkItem.on_timeout)."""
+    with contextlib.suppress(Exception):
+        async with pool.acquire() as conn:
+            await conn.execute(_RECORD_FAILURE, board_id, "WorkerPool timeout")
+            await conn.execute(_RELEASE_BOARD_LEASE, board_id)
+
+
+async def _process_one_board_streaming(
+    board: asyncpg.Record,
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+    extender: object,
+) -> tuple[bool, float]:
+    """Run a streaming monitor cycle for a single board. Returns (success, duration_s).
+
+    Yields batches from the monitor, processing each incrementally:
+    - Extends the DB lease and WorkerPool deadline on each batch
+    - Runs _DIFF_BATCH (new/touched/relisted only) per batch
+    - Fires R2 uploads as background tasks overlapping with discovery
+    - Runs _MARK_GONE once after all batches complete
+    """
+    board_id = str(board["id"])
+    company_id = str(board["company_id"])
+    board_url = board["board_url"]
+    crawler_type = board["crawler_type"]
+
+    board_log = log.bind(board_id=board_id, board_url=board_url, crawler_type=crawler_type)
+    t0 = monotonic()
+
+    try:
+        metadata = board["metadata"] if board["metadata"] else {}
+        if isinstance(metadata, str):
+            metadata = json.loads(metadata)
+
+        # Pre-load lookup tables once
+        loc_resolver = await _get_location_resolver(pool)
+        rates = await _get_currency_rates(pool)
+        tech_id_map = await _get_technology_ids(pool)
+        occ_ids = await _get_occupation_ids(pool)
+        sen_ids = await _get_seniority_ids(pool)
+
+        all_urls: set[str] = set()
+        total_new = 0
+        total_relisted = 0
+        batch_count = 0
+        r2_tasks: list[asyncio.Task] = []
+        r2_semaphore = asyncio.Semaphore(10)
+
+        async def _do_upload_bg(
+            pid: str,
+            kw: dict,
+            cur_hash: int | None,
+        ) -> tuple[str, int, str | None] | None:
+            async with r2_semaphore:
+                new_hash = await _upload_to_r2(pid, current_hash=cur_hash, **kw)
+                if new_hash is not None and new_hash != cur_hash:
+                    return (pid, new_hash, kw.get("description"))
+                return None
+
+        is_rich = True  # streaming is only used for rich monitors
+
+        async for result in monitor_one_stream(board_url, crawler_type, metadata, http):
+            batch_count += 1
+            all_urls.update(result.urls)
+
+            # Pulse heartbeat + extend DB lease
+            extender.pulse()
+            with contextlib.suppress(Exception):
+                await pool.execute(_EXTEND_BOARD_LEASE, board_id)
+
+            if not result.urls:
+                continue
+
+            r2_work: list[tuple[str, dict, int | None]] = []
+
+            async with pool.acquire() as conn, conn.transaction():
+                rows = await conn.fetch(
+                    _DIFF_BATCH,
+                    list(result.urls),
+                    board_id,
+                    is_rich,
+                )
+
+                new_urls: list[str] = []
+                relisted: list[dict] = []
+                touched: list[dict] = []
+
+                for row in rows:
+                    action = row["action"]
+                    if action == "new":
+                        new_urls.append(row["url"])
+                    elif action == "relisted":
+                        r2h = row["description_r2_hash"]
+                        relisted.append(
+                            {
+                                "id": row["id"],
+                                "url": row["url"],
+                                "r2_hash": int(r2h) if r2h is not None else None,
+                            }
+                        )
+                    elif action == "touched":
+                        r2h = row["description_r2_hash"]
+                        touched.append(
+                            {
+                                "id": row["id"],
+                                "url": row["url"],
+                                "r2_hash": int(r2h) if r2h is not None else None,
+                            }
+                        )
+
+                total_new += len(new_urls)
+                total_relisted += len(relisted)
+
+                if result.jobs_by_url:
+                    new_jobs = [result.jobs_by_url[u] for u in new_urls if u in result.jobs_by_url]
+
+                    for j in new_jobs:
+                        j.description = normalize_description_html(j.description)
+                        enrich_description(j)
+                        if not j.language and j.description:
+                            j.language = detect_language(j.description)
+
+                    if new_jobs:
+                        for j in new_jobs:
+                            loc_ids, loc_types = await _resolve_locations(
+                                loc_resolver,
+                                _coerce_locations(j.locations),
+                                _coerce_text(j.job_location_type),
+                                _coerce_text(j.language),
+                            )
+                            desc_text = _coerce_text(j.description)
+                            s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
+                                desc_text, rates
+                            )
+                            exp_min, exp_max = _extract_experience_fields(desc_text)
+                            t_ids = _resolve_technology_ids(desc_text, tech_id_map)
+                            title_text = _coerce_text(j.title)
+                            all_titles = _build_titles(title_text, j.localizations)
+                            occ_id, sen_id = _resolve_occupation_seniority(
+                                all_titles, occ_ids, sen_ids
+                            )
+                            row = await conn.fetchrow(
+                                _INSERT_RICH_JOB,
+                                company_id,
+                                board_id,
+                                normalize_employment_type(_coerce_text(j.employment_type)),
+                                j.url,
+                                all_titles,
+                                _build_locales(_coerce_text(j.language), j.localizations),
+                                loc_ids,
+                                loc_types,
+                                s_min,
+                                s_max,
+                                s_cur,
+                                s_per,
+                                s_eur,
+                                exp_min,
+                                exp_max,
+                                t_ids,
+                                occ_id,
+                                sen_id,
+                            )
+                            if row:
+                                r2_work.append(
+                                    (
+                                        str(row["id"]),
+                                        dict(
+                                            title=_coerce_text(j.title),
+                                            description=_coerce_text(j.description),
+                                            language=_coerce_text(j.language),
+                                            locations=_coerce_locations(j.locations),
+                                            localizations=j.localizations,
+                                            extras=j.extras,
+                                            metadata=j.metadata,
+                                            date_posted=j.date_posted,
+                                            base_salary=j.base_salary,
+                                            employment_type=_coerce_text(j.employment_type),
+                                            job_location_type=_coerce_text(j.job_location_type),
+                                        ),
+                                        None,
+                                    )
+                                )
+
+                    # Update content for relisted and touched
+                    update_triples = [
+                        (item["id"], result.jobs_by_url[item["url"]], item.get("r2_hash"))
+                        for item in relisted + touched
+                        if item["url"] in result.jobs_by_url
+                    ]
+                    if update_triples:
+                        for _, j, _ in update_triples:
+                            j.description = normalize_description_html(j.description)
+                            enrich_description(j)
+                            if not j.language and j.description:
+                                j.language = detect_language(j.description)
+
+                        await conn.execute(_CREATE_RICH_UPDATES_TEMP)
+                        records = []
+                        for pid, j, _ in update_triples:
+                            loc_ids, loc_types = await _resolve_locations(
+                                loc_resolver,
+                                _coerce_locations(j.locations),
+                                _coerce_text(j.job_location_type),
+                                _coerce_text(j.language),
+                            )
+                            desc_text = _coerce_text(j.description)
+                            s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
+                                desc_text, rates
+                            )
+                            exp_min, exp_max = _extract_experience_fields(desc_text)
+                            t_ids = _resolve_technology_ids(desc_text, tech_id_map)
+                            title_text = _coerce_text(j.title)
+                            all_titles = _build_titles(title_text, j.localizations)
+                            occ_id, sen_id = _resolve_occupation_seniority(
+                                all_titles, occ_ids, sen_ids
+                            )
+                            records.append(
+                                (
+                                    pid,
+                                    normalize_employment_type(_coerce_text(j.employment_type)),
+                                    all_titles,
+                                    _build_locales(_coerce_text(j.language), j.localizations),
+                                    loc_ids,
+                                    loc_types,
+                                    s_min,
+                                    s_max,
+                                    s_cur,
+                                    s_per,
+                                    s_eur,
+                                    exp_min,
+                                    exp_max,
+                                    t_ids,
+                                    occ_id,
+                                    sen_id,
+                                )
+                            )
+                        await conn.copy_records_to_table("_rich_updates", records=records)
+                        await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
+
+                        backfill_count = 0
+                        for pid, j, existing_hash in update_triples:
+                            if existing_hash is None:
+                                backfill_count += 1
+                                if backfill_count > _R2_BACKFILL_LIMIT:
+                                    continue
+                            r2_work.append(
+                                (
+                                    str(pid),
+                                    dict(
+                                        title=_coerce_text(j.title),
+                                        description=_coerce_text(j.description),
+                                        language=_coerce_text(j.language),
+                                        locations=_coerce_locations(j.locations),
+                                        localizations=j.localizations,
+                                        extras=j.extras,
+                                        metadata=j.metadata,
+                                        date_posted=j.date_posted,
+                                        base_salary=j.base_salary,
+                                        employment_type=_coerce_text(j.employment_type),
+                                        job_location_type=_coerce_text(j.job_location_type),
+                                    ),
+                                    existing_hash,
+                                )
+                            )
+
+            # Fire R2 uploads as background tasks (overlap with next batch)
+            for pid, kw, eh in r2_work:
+                r2_tasks.append(asyncio.create_task(_do_upload_bg(pid, kw, eh)))
+
+            board_log.info(
+                "batch.monitor.stream_batch",
+                batch=batch_count,
+                discovered=len(result.urls),
+                new=len(new_urls),
+            )
+
+        # After all batches: mark gone postings
+        if not all_urls:
+            # No URLs discovered at all (or all filtered out) — treat as empty check
+            elapsed = monotonic() - t0
+            board_log.warning("batch.monitor.empty", duration_s=round(elapsed, 2))
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
+                if rows and rows[0]["board_status"] == "gone":
+                    await conn.execute(_DELIST_BOARD_POSTINGS, board_id)
+                    board_log.warning("batch.monitor.board_gone")
+            return True, elapsed
+
+        # Run gone marking with the full URL set (all_urls is guaranteed non-empty here)
+        gone_count = 0
+        delist_threshold = _DELIST_THRESHOLD_AUTHORITATIVE
+        async with pool.acquire() as conn, conn.transaction():
+            gone_rows = await conn.fetch(
+                _MARK_GONE,
+                list(all_urls),
+                board_id,
+                delist_threshold,
+            )
+            gone_count = len(gone_rows)
+            await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+
+        # Flush location misses to taxonomy_miss table
+        await _flush_location_misses(loc_resolver, pool)
+
+        # Await all background R2 tasks and persist hashes
+        if r2_tasks:
+            results = await asyncio.gather(*r2_tasks, return_exceptions=True)
+            hashes_to_persist = [r for r in results if isinstance(r, tuple)]
+            r2_errors = sum(1 for r in results if isinstance(r, Exception))
+            if r2_errors:
+                board_log.warning("batch.r2_upload.failures", count=r2_errors, total=len(r2_tasks))
+            if hashes_to_persist:
+                tech_map = await _get_technology_ids(pool)
+                async with pool.acquire() as conn:
+                    for posting_id, new_hash, desc in hashes_to_persist:
+                        tech_ids = _resolve_technology_ids(desc, tech_map)
+                        await conn.execute(_SET_R2_HASH, posting_id, new_hash, tech_ids)
+
+        elapsed = monotonic() - t0
+        board_log.info(
+            "batch.monitor.success",
+            discovered=len(all_urls),
+            new=total_new,
+            relisted=total_relisted,
+            gone=gone_count,
+            batches=batch_count,
+            duration_s=round(elapsed, 2),
+        )
+        if elapsed >= _SLOW_MONITOR_SECONDS:
+            board_log.warning("batch.monitor.slow", duration_s=round(elapsed, 2))
+
+        if total_new or gone_count:
+            with contextlib.suppress(Exception):
+                await get_redis().delete("cache:platform-stats")
+
+        return True, elapsed
+
+    except Exception as exc:
+        elapsed = monotonic() - t0
+        error_msg = _error_message(exc)
+        board_log.exception("batch.monitor.error", error=error_msg, duration_s=round(elapsed, 2))
+        # Discard stale location misses from this failed board
+        loc_resolver.drain_location_misses()
+        # Cancel and await any in-flight R2 background tasks
+        for t in r2_tasks:
+            if not t.done():
+                t.cancel()
+        if r2_tasks:
+            await asyncio.gather(*r2_tasks, return_exceptions=True)
+        with contextlib.suppress(Exception):
+            async with pool.acquire() as conn:
+                await conn.execute(_RECORD_FAILURE, board_id, error_msg)
+        return False, elapsed
 
 
 async def _process_one_board(
@@ -1457,6 +1948,10 @@ async def _process_one_board(
 
             await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
 
+        # Flush location misses to taxonomy_miss table
+        if result.jobs_by_url:
+            await _flush_location_misses(loc_resolver, pool)
+
         # R2 uploads after transaction — concurrent to avoid timeout for large boards
         if r2_work:
             r2_semaphore = asyncio.Semaphore(10)
@@ -1511,6 +2006,9 @@ async def _process_one_board(
         elapsed = monotonic() - t0
         error_msg = _error_message(exc)
         board_log.exception("batch.monitor.error", error=error_msg, duration_s=round(elapsed, 2))
+        # Discard stale location misses from this failed board
+        if _location_resolver is not None:
+            _location_resolver.drain_location_misses()
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
                 await conn.execute(_RECORD_FAILURE, board_id, error_msg)
@@ -1702,6 +2200,8 @@ async def _process_one_scrape(
             if _parse_update_count(update_result) != 1:
                 raise RuntimeError(f"job_posting_not_found:{item.job_posting_id}")
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
+
+        await _flush_location_misses(loc_resolver, pool)
         elapsed = monotonic() - t0
         log.debug(
             "batch.scrape.success", url=item.url, title=content.title, duration_s=round(elapsed, 2)
@@ -1714,6 +2214,8 @@ async def _process_one_scrape(
         elapsed = monotonic() - t0
         error_msg = _error_message(exc)
         log.error("batch.scrape.error", url=item.url, error=error_msg, duration_s=round(elapsed, 2))
+        if _location_resolver is not None:
+            _location_resolver.drain_location_misses()
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
                 await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
@@ -1875,8 +2377,13 @@ async def run_single_board(
     board_id = str(board["id"])
     log.info("single_board.monitor.start", board_slug=board_slug, board_id=board_id)
 
-    # Monitor
-    _ok, monitor_duration = await _process_one_board(board, pool, http)
+    # Monitor — use streaming path for streaming monitors
+    stream_fn = get_stream_fn(board["crawler_type"])
+    if stream_fn is not None:
+        extender = DeadlineExtender()
+        _ok, monitor_duration = await _process_one_board_streaming(board, pool, http, extender)
+    else:
+        _ok, monitor_duration = await _process_one_board(board, pool, http)
     log.info(
         "single_board.monitor.done", board_slug=board_slug, duration_s=round(monitor_duration, 2)
     )

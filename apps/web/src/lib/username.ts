@@ -54,6 +54,7 @@ const RESERVED_USERNAMES = new Set([
   "jobs",
   "careers",
   "explore",
+  "watchlists",
   "search",
   "feed",
   "home",

@@ -13,7 +13,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto w-fit min-w-[24rem] max-w-lg px-4">
       <div className="flex min-h-screen flex-col items-center justify-center py-8">
-        <Link href={lp("/app")} prefetch={false} className="mb-6 block h-9 w-36">
+        <Link href={lp("/explore")} prefetch={false} className="mb-6 block h-9 w-36">
           <ThemedImage
             lightSrc="/js_wide_logo_black.svg"
             darkSrc="/js_wide_logo_white.svg"

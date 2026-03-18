@@ -4,16 +4,12 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
 import { followedCompany } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
-import { canFollowMore } from "@/lib/plans";
 
 export type ToggleResult = {
-  followed: boolean;
-  limitReached?: boolean;
-  current?: number;
-  max?: number;
+  starred: boolean;
 };
 
-export async function toggleFollowedCompany(
+export async function toggleStarredCompany(
   companyId: string,
 ): Promise<ToggleResult> {
   const userId = await getSessionUserId();
@@ -32,19 +28,14 @@ export async function toggleFollowedCompany(
 
   if (existing) {
     await db.delete(followedCompany).where(eq(followedCompany.id, existing.id));
-    return { followed: false };
-  }
-
-  const { allowed, current, max } = await canFollowMore(userId);
-  if (!allowed) {
-    return { followed: false, limitReached: true, current, max };
+    return { starred: false };
   }
 
   await db.insert(followedCompany).values({ userId, companyId });
-  return { followed: true };
+  return { starred: true };
 }
 
-export async function getFollowedCompanyIds(): Promise<string[]> {
+export async function getStarredCompanyIds(): Promise<string[]> {
   const userId = await getSessionUserId();
   if (!userId) return [];
 

@@ -30,7 +30,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
 
   const isSignUp = mode === "sign-up";
-  const dashboardUrl = lp("/app");
+  const dashboardUrl = lp("/explore");
 
   function goToCheckEmail() {
     sessionStorage.setItem("verify-email", email);
@@ -125,7 +125,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         }
 
         if (targetLocale && !dashboardUrl.startsWith(`/${targetLocale}/`)) {
-          router.push(`/${targetLocale}/app`);
+          router.push(`/${targetLocale}/explore`);
         } else {
           router.push(dashboardUrl);
         }

@@ -592,11 +592,18 @@ class LocationResolver:
         self._misses: set[str] = set()
         self._negative: set[str] = set()
         self._posting_language: str | None = None
+        self._location_misses: list[tuple[str, str]] = []
 
     def _init_db(self, path: str = ":memory:") -> None:
         """Create SQLite schema. Use ':memory:' for tests."""
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.executescript(_SCHEMA)
+
+    def drain_location_misses(self) -> list[tuple[str, str]]:
+        """Return and clear collected location misses (raw_value, sample_value)."""
+        misses = self._location_misses
+        self._location_misses = []
+        return misses
 
     @property
     def entry_count(self) -> int:
@@ -903,6 +910,8 @@ class LocationResolver:
                 ResolvedLocation(location_id=lid, location_type=loc_type) for lid in location_ids
             ]
 
+        if self._tracking:
+            self._location_misses.append((geo_str.lower().strip(), geo_str))
         return []
 
     def _extract_type_hint(self, raw: str) -> str | None:

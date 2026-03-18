@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Search, Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { getAllOccupationsGrouped } from "@/lib/actions/taxonomy";
 import type { OccupationGroup, OccupationItem } from "@/lib/actions/taxonomy";
+import { findBestGuess } from "./best-guess";
 
 interface OccupationModalProps {
   open: boolean;
@@ -28,6 +29,8 @@ export function OccupationModal({
   const [groups, setGroups] = useState<OccupationGroup[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [warning, setWarning] = useState("");
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -82,6 +85,36 @@ export function OccupationModal({
       })
       .filter((g): g is OccupationGroup => g !== null);
   }, [groups, search]);
+
+  const showWarning = useCallback((msg: string) => {
+    clearTimeout(warningTimer.current);
+    setWarning(msg);
+    warningTimer.current = setTimeout(() => setWarning(""), 3000);
+  }, []);
+
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      const leafItems = filtered.flatMap((g) => [
+        ...g.standalone,
+        ...g.subGroups.flatMap((sg) => sg.children),
+      ]);
+      const result = findBestGuess(search, leafItems);
+      if (!result) return;
+      if ("match" in result) {
+        onToggle(result.match);
+        setSearch("");
+        setWarning("");
+      } else {
+        showWarning(t({
+          id: "search.bestGuess.ambiguous",
+          comment: "Warning when Enter is pressed but multiple items match",
+          message: "Multiple matches — select one below",
+        }));
+      }
+    },
+    [filtered, search, onToggle, showWarning, t],
+  );
 
   /** Collect all selectable occupation items from a group (parents + children + standalone). */
   function allItems(group: OccupationGroup): OccupationItem[] {
@@ -153,7 +186,8 @@ export function OccupationModal({
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setWarning(""); }}
+                onKeyDown={handleSearchKeyDown}
                 placeholder={t({
                   id: "search.occupationModal.searchPlaceholder",
                   comment: "Placeholder for search input in occupation modal",
@@ -162,6 +196,9 @@ export function OccupationModal({
                 className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted"
               />
             </div>
+            {warning && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">{warning}</p>
+            )}
           </div>
 
           {/* Body */}

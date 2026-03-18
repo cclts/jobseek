@@ -209,7 +209,29 @@ def new(slug: str, issue: int | None, reconfig: bool, reset: bool):
             ws.logo_url = company_data.get("logo_url", "")
             ws.icon_url = company_data.get("icon_url", "")
             ws.logo_type = company_data.get("logo_type", "")
+            ws.industry = int(company_data["industry"]) if company_data.get("industry") else None
+            ws.employee_count_range = (
+                int(company_data["employee_count_range"])
+                if company_data.get("employee_count_range")
+                else None
+            )
+            ws.founded_year = (
+                int(company_data["founded_year"]) if company_data.get("founded_year") else None
+            )
             out.info("reconfig", f"Loaded company: {ws.name or slug}")
+
+        # Load descriptions from company_descriptions.csv
+        desc_path = get_data_dir() / "company_descriptions.csv"
+        if desc_path.exists():
+            _, desc_rows = read_csv(desc_path)
+            for r in desc_rows:
+                if r.get("slug") == slug:
+                    for locale in ("en", "de", "fr", "it"):
+                        if r.get(locale):
+                            ws.descriptions[locale] = r[locale]
+                    if ws.descriptions:
+                        out.info("reconfig", f"Loaded descriptions: {', '.join(ws.descriptions)}")
+                    break
 
     save_workspace(ws)
 
@@ -871,14 +893,16 @@ def _execute_submit_step(
 
         # Stage only this company's files to avoid committing leftover
         # data from a previously submitted company branch
+        img_path = f"apps/crawler/data/images/{ws.slug}/"
         commit_paths = [
             "apps/crawler/data/companies.csv",
             "apps/crawler/data/boards.csv",
             "apps/crawler/data/company_descriptions.csv",
             "apps/crawler/data/industries.csv",
-            f"apps/crawler/data/images/{ws.slug}/",
             "apps/crawler/src/workspace/kb/",
         ]
+        if os.path.isdir(img_path):
+            commit_paths.append(img_path)
         if not git.has_uncommitted_changes(commit_paths):
             return  # Nothing to commit — already done
         git.add_files(commit_paths)

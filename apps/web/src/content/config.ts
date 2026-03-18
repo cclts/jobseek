@@ -59,8 +59,8 @@ export const siteConfig = {
     company: { href: "/how-we-index" },
     license: { href: "/license" },
     login: { href: "/sign-in" },
-    app: { href: "/app" },
-    settings: { href: "/app/settings" },
+    app: { href: "/explore" },
+    settings: { href: "/settings" },
     dashboard: { href: "/dashboard" },
   },
 

@@ -68,6 +68,203 @@ async function _queryCompanySuggestions(q: string): Promise<CompanySuggestion[]>
   }));
 }
 
+// ── Paginated company search with filter-aware match counts ─────────
+
+export interface CompanyListEntry {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  description: string | null;
+  activeMatches: number;
+  yearMatches: number;
+}
+
+export async function searchCompaniesForWatchlist(params: {
+  query?: string;
+  industryId?: number;
+  locale: string;
+  offset: number;
+  limit: number;
+  // Current watchlist filters — used to compute match counts
+  keywords?: string[];
+  locationIds?: number[];
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  salaryMin?: number;
+  salaryMax?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  starredCompanyIds?: string[];
+}): Promise<{ companies: CompanyListEntry[]; total: number }> {
+  const q = params.query?.trim().toLowerCase();
+  const hasQuery = q && q.length >= 2;
+
+  // Company-level WHERE
+  const companyClauses = [sql`true`];
+  if (hasQuery) {
+    companyClauses.push(
+      sql`(lower(c.name) LIKE ${q + "%"} OR (length(${q}) >= 3 AND similarity(lower(c.name), ${q}) > 0.3))`,
+    );
+  }
+  if (params.industryId != null) {
+    companyClauses.push(sql`c.industry = ${params.industryId}`);
+  }
+  const companyWhere = sql.join(companyClauses, sql` AND `);
+
+  // Expand parent locations/occupations to include children
+  const [expandedLocIds, expandedOccIds] = await Promise.all([
+    params.locationIds?.length
+      ? Promise.all(params.locationIds.map(expandLocationIds)).then((a) => [...new Set(a.flat())])
+      : undefined,
+    params.occupationIds?.length
+      ? Promise.all(params.occupationIds.map(expandOccupationIds)).then((a) => [...new Set(a.flat())])
+      : undefined,
+  ]);
+
+  // Job-level filter clauses for match counting
+  const jobClauses = [sql`jp.is_active = true`];
+  if (params.keywords && params.keywords.length > 0) {
+    const kwParts = params.keywords.map((k) => {
+      const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const s = /^\w/.test(k) ? "\\m" : "";
+      const e = /\w$/.test(k) ? "\\M" : "";
+      return sql`jp.titles[1] ~* ${s + escaped + e}`;
+    });
+    jobClauses.push(sql`(${sql.join(kwParts, sql` OR `)})`);
+  }
+  if (expandedLocIds?.length) {
+    const a = `{${expandedLocIds.join(",")}}`;
+    jobClauses.push(sql`jp.location_ids && ${a}::integer[]`);
+  }
+  if (expandedOccIds?.length) {
+    const a = `{${expandedOccIds.join(",")}}`;
+    jobClauses.push(sql`jp.occupation_id = ANY(${a}::integer[])`);
+  }
+  if (params.seniorityIds?.length) {
+    const a = `{${params.seniorityIds.join(",")}}`;
+    jobClauses.push(sql`jp.seniority_id = ANY(${a}::integer[])`);
+  }
+  if (params.technologyIds?.length) {
+    const a = `{${params.technologyIds.join(",")}}`;
+    jobClauses.push(sql`jp.technology_ids && ${a}::integer[]`);
+  }
+  if (params.salaryMin != null && params.salaryMax != null) {
+    jobClauses.push(sql`jp.salary_eur BETWEEN ${params.salaryMin} AND ${params.salaryMax}`);
+  } else if (params.salaryMin != null) {
+    jobClauses.push(sql`jp.salary_eur >= ${params.salaryMin}`);
+  } else if (params.salaryMax != null) {
+    jobClauses.push(sql`jp.salary_eur <= ${params.salaryMax}`);
+  }
+  if (params.experienceMin != null || params.experienceMax != null) {
+    if (params.experienceMin != null && params.experienceMax != null) {
+      jobClauses.push(sql`(jp.experience_min IS NULL OR (jp.experience_min >= ${params.experienceMin} AND jp.experience_min <= ${params.experienceMax}))`);
+    } else if (params.experienceMin != null) {
+      jobClauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min >= ${params.experienceMin})`);
+    } else {
+      jobClauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
+    }
+  }
+  const jobWhere = sql.join(jobClauses, sql` AND `);
+
+  const [totalRow] = await db.execute<{ [key: string]: unknown; cnt: number }>(sql`
+    SELECT count(*)::int AS cnt FROM company c WHERE ${companyWhere}
+  `);
+  const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
+  if (total === 0) return { companies: [], total: 0 };
+
+  // When no text query and starred IDs are provided, boost starred companies to top
+  const starredIds = params.starredCompanyIds;
+  const boostStarred = !hasQuery && starredIds && starredIds.length > 0;
+  const starredArray = boostStarred ? `{${starredIds.join(",")}}` : null;
+
+  const orderClause = boostStarred
+    ? sql`CASE WHEN c.id = ANY(${starredArray}::uuid[]) THEN 0 ELSE 1 END, active_matches DESC, c.name`
+    : sql`active_matches DESC, c.name`;
+
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    id: string;
+    name: string;
+    slug: string;
+    icon: string | null;
+    description: string | null;
+    active_matches: number;
+    year_matches: number;
+  }>(sql`
+    SELECT c.id, c.name, c.slug, c.icon,
+           COALESCE(cd.description, c.description) AS description,
+           (SELECT count(*)::int FROM job_posting jp
+            WHERE jp.company_id = c.id AND ${jobWhere}) AS active_matches,
+           (SELECT count(*)::int FROM job_posting jp
+            WHERE jp.company_id = c.id
+              AND jp.first_seen_at >= now() - interval '1 year'
+              AND ${jobWhere}) AS year_matches
+    FROM company c
+    LEFT JOIN company_description cd ON cd.company_id = c.id AND cd.locale = ${params.locale}
+    WHERE ${companyWhere}
+    ORDER BY ${orderClause}
+    OFFSET ${params.offset}
+    LIMIT ${params.limit}
+  `);
+
+  type Row = {
+    id: string; name: string; slug: string; icon: string | null;
+    description: string | null; active_matches: number; year_matches: number;
+  };
+  return {
+    companies: (rows as unknown as Row[]).map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      icon: r.icon,
+      description: r.description,
+      activeMatches: r.active_matches,
+      yearMatches: r.year_matches,
+    })),
+    total,
+  };
+}
+
+// ── Industry suggestions ────────────────────────────────────────────
+
+export interface IndustrySuggestion {
+  id: number;
+  name: string;
+}
+
+export async function suggestIndustries(params: {
+  query?: string;
+  locale: string;
+}): Promise<IndustrySuggestion[]> {
+  const q = params.query?.trim().toLowerCase();
+  const hasQuery = q && q.length >= 1;
+
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    id: number;
+    name: string;
+  }>(sql`
+    SELECT i.id,
+           COALESCE(
+             (SELECT idn.name FROM industry_name idn
+              WHERE idn.industry_id = i.id AND idn.locale = ${params.locale} AND idn.is_display = true
+              LIMIT 1),
+             i.name
+           ) AS name
+    FROM industry i
+    ${hasQuery ? sql`WHERE lower(i.name) LIKE ${q + "%"} OR EXISTS (
+      SELECT 1 FROM industry_name idn
+      WHERE idn.industry_id = i.id AND lower(idn.name) LIKE ${q + "%"}
+    )` : sql``}
+    ORDER BY i.name
+  `);
+
+  type Row = { id: number; name: string };
+  return (rows as unknown as Row[]).map((r) => ({ id: r.id, name: r.name }));
+}
+
 // ── Company detail ──────────────────────────────────────────────────
 
 export interface CompanyDetail {

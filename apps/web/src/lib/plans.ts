@@ -2,26 +2,26 @@ import "server-only";
 
 import { eq, and, count } from "drizzle-orm";
 import { db } from "@/db";
-import { subscription, followedCompany } from "@/db/schema";
+import { subscription, watchlist } from "@/db/schema";
 
 export type PlanId = "free" | "unlimited";
 
 export interface PlanLimits {
-  maxFollowedCompanies: number;
   maxAlerts: number;
   canReceiveAlerts: boolean;
+  maxWatchlists: number;
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
-    maxFollowedCompanies: 5,
     maxAlerts: 0,
     canReceiveAlerts: false,
+    maxWatchlists: 1,
   },
   unlimited: {
-    maxFollowedCompanies: Number.MAX_SAFE_INTEGER,
     maxAlerts: Number.MAX_SAFE_INTEGER,
     canReceiveAlerts: true,
+    maxWatchlists: Number.MAX_SAFE_INTEGER,
   },
 };
 
@@ -35,7 +35,7 @@ export async function getUserPlan(userId: string): Promise<PlanId> {
   return (row?.plan as PlanId) ?? "free";
 }
 
-export async function canFollowMore(
+export async function canCreateWatchlist(
   userId: string,
 ): Promise<{ allowed: boolean; current: number; max: number }> {
   const plan = await getUserPlan(userId);
@@ -43,12 +43,12 @@ export async function canFollowMore(
 
   const [{ value: current }] = await db
     .select({ value: count() })
-    .from(followedCompany)
-    .where(eq(followedCompany.userId, userId));
+    .from(watchlist)
+    .where(eq(watchlist.userId, userId));
 
   return {
-    allowed: current < limits.maxFollowedCompanies,
+    allowed: current < limits.maxWatchlists,
     current,
-    max: limits.maxFollowedCompanies,
+    max: limits.maxWatchlists,
   };
 }

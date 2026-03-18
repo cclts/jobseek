@@ -23,6 +23,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "pinpoint",
         "recruitee",
         "rss",
+        "signals",
         "traffit",
     }
 )

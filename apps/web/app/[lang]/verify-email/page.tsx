@@ -88,7 +88,7 @@ export default function VerifyEmailPage() {
             Your email has been verified.
           </Trans>
         </p>
-        <Button href={lp("/app")} prefetch={false} className="mt-4">
+        <Button href={lp("/explore")} prefetch={false} className="mt-4">
           <Trans id="auth.verify.success.continue" comment="Button to continue to app after verification">
             Continue
           </Trans>

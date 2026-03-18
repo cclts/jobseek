@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from src.core.monitors import DiscoveredJob, get_discoverer
+from src.core.monitors import DiscoveredJob, get_discoverer, get_stream_fn
 
 if TYPE_CHECKING:
     import httpx
@@ -297,3 +297,28 @@ async def monitor_one(
         await _save_raw(artifact_dir, board_url, monitor_type, config, http)
 
     return result
+
+
+async def monitor_one_stream(
+    board_url: str,
+    monitor_type: str,
+    monitor_config: dict | None,
+    http: httpx.AsyncClient,
+):
+    """Async generator yielding MonitorResult per batch.
+
+    Falls back to single-yield for non-streaming monitors.
+    """
+    stream_fn = get_stream_fn(monitor_type)
+    config = monitor_config or {}
+
+    if stream_fn is None:
+        yield await monitor_one(board_url, monitor_type, monitor_config, http)
+        return
+
+    board = {"board_url": board_url, "metadata": config}
+    async for batch in stream_fn(board, http):
+        result = _normalize_discovered(batch)
+        result = _apply_url_filter(result, config)
+        result = _apply_url_transform(result, config)
+        yield result

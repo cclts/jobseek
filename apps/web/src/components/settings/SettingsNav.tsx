@@ -17,17 +17,17 @@ export function SettingsNav() {
 
   const links = [
     {
-      href: lp("/app/settings"),
+      href: lp("/settings"),
       label: t({ id: "settings.nav.general", comment: "General settings nav link", message: "General" }),
       exact: true,
     },
     {
-      href: lp("/app/settings/account"),
+      href: lp("/settings/account"),
       label: t({ id: "settings.nav.account", comment: "Account settings nav link", message: "Account" }),
       exact: false,
     },
     {
-      href: lp("/app/settings/billing"),
+      href: lp("/settings/billing"),
       label: t({ id: "settings.nav.billing", comment: "Subscription settings nav link", message: "Subscription" }),
       exact: false,
     },

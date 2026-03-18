@@ -14,7 +14,7 @@ interface LanguageNoteProps {
 export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
   const params = useParams();
   const lang = (params.lang as string) ?? locale;
-  const settingsHref = `/${lang}/app/settings`;
+  const settingsHref = `/${lang}/settings`;
 
   const isAll = jobLanguages.includes("*");
   const isDefault = jobLanguages.length === 0;

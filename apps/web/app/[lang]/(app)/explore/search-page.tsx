@@ -318,39 +318,43 @@ export function SearchPage({
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
     startSearch(async () => {
-      const result =
-        kws.length > 0
-          ? await searchJobs({
-              keywords: kws,
-              locationIds,
-              occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
-              seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
-              technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
-              salaryMinEur: salMinEur,
-              salaryMaxEur: salMaxEur,
-              experienceMin: expMin,
-              experienceMax: expMax,
-              languages,
-              locale,
-              offset: 0,
-              limit: PAGE_SIZE,
-            })
-          : await listTopCompanies({
-              locationIds,
-              occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
-              seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
-              technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
-              salaryMinEur: salMinEur,
-              salaryMaxEur: salMaxEur,
-              experienceMin: expMin,
-              experienceMax: expMax,
-              languages,
-              locale,
-              offset: 0,
-              limit: PAGE_SIZE,
-            });
-      setCompanies(result.companies);
-      setTotalCompanies(result.totalCompanies);
+      try {
+        const result =
+          kws.length > 0
+            ? await searchJobs({
+                keywords: kws,
+                locationIds,
+                occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
+                seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
+                technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+                salaryMinEur: salMinEur,
+                salaryMaxEur: salMaxEur,
+                experienceMin: expMin,
+                experienceMax: expMax,
+                languages,
+                locale,
+                offset: 0,
+                limit: PAGE_SIZE,
+              })
+            : await listTopCompanies({
+                locationIds,
+                occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
+                seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
+                technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+                salaryMinEur: salMinEur,
+                salaryMaxEur: salMaxEur,
+                experienceMin: expMin,
+                experienceMax: expMax,
+                languages,
+                locale,
+                offset: 0,
+                limit: PAGE_SIZE,
+              });
+        setCompanies(result.companies);
+        setTotalCompanies(result.totalCompanies);
+      } catch {
+        // Ensure transition ends even on error — keeps existing results visible
+      }
     });
   }
 

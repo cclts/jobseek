@@ -69,6 +69,7 @@ class MonitorType:
     discover: DiscoverFunc
     can_handle: CanHandleFunc | None = None
     rich: bool = False  # True for API monitors that return full job data
+    stream: Callable | None = None  # async generator yielding batches
 
 
 _REGISTRY: list[MonitorType] = []
@@ -82,6 +83,7 @@ def register(
     can_handle: CanHandleFunc | None = None,
     *,
     rich: bool = False,
+    stream: Callable | None = None,
 ) -> None:
     """Register a monitor type. Registry stays sorted by cost (cheapest first)."""
     _REGISTRY.append(
@@ -91,6 +93,7 @@ def register(
             discover=discover,
             can_handle=can_handle,
             rich=rich,
+            stream=stream,
         )
     )
     _REGISTRY.sort(key=lambda m: m.cost)
@@ -139,6 +142,14 @@ def get_discoverer(name: str) -> DiscoverFunc:
             return monitor.discover
     available = [m.name for m in _REGISTRY]
     raise ValueError(f"Unknown monitor type: {name!r}. Available: {available}")
+
+
+def get_stream_fn(name: str) -> Callable | None:
+    """Look up a stream function by monitor type name. Returns None if not streaming."""
+    for monitor in _REGISTRY:
+        if monitor.name == name:
+            return monitor.stream
+    return None
 
 
 def get_can_handle(name: str) -> CanHandleFunc:

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Building2, Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { FollowButton } from "@/components/search/follow-button";
+import { StarButton } from "@/components/search/star-button";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
@@ -270,7 +270,7 @@ export function CompanyPage({
 
   // Back-to-search link that carries current filters
   const searchHref = useMemo(
-    () => buildFilteredPath(`/${uiLocale}/app`, keywords, locations, undefined, occupations, seniorities, technologies),
+    () => buildFilteredPath(`/${uiLocale}/explore`, keywords, locations, undefined, occupations, seniorities, technologies),
     [uiLocale, keywords, locations, occupations, seniorities, technologies],
   );
 
@@ -570,7 +570,7 @@ export function CompanyPage({
         ) : (
           <span className="text-lg font-semibold">{company.name}</span>
         )}
-        <FollowButton companyId={company.id} />
+        <StarButton companyId={company.id} />
       </div>
 
       {/* Tagline / description */}
@@ -650,9 +650,16 @@ export function CompanyPage({
               tabIndex={0}
               onClick={() => handleOpenPosting(posting.id)}
               onKeyDown={(e) => { if (e.key === "Enter") handleOpenPosting(posting.id); }}
-              className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === showPostingId ? "bg-primary/10" : "hover:bg-border-soft"}`}
+              className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === showPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
             >
               <span className="min-w-0 flex-1 truncate text-sm">{posting.title ?? "—"}</span>
+              {posting.isActive === false && (
+                <span className="shrink-0 rounded bg-border-soft px-1 py-0.5 text-[10px] text-muted">
+                  <Trans id="company.page.closed" comment="Label for inactive/closed job postings on company page">
+                    Closed
+                  </Trans>
+                </span>
+              )}
               {posting.locations.length > 0 && (
                 <span className={`shrink-0 text-xs text-muted ${posting.locations[0].geoType && posting.locations[0].geoType !== "city" ? "italic" : ""}`}>
                   {posting.locations[0].name}

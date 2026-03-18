@@ -9,7 +9,7 @@ import { useParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { loadMorePostings } from "@/lib/actions/search";
 import { SaveButton } from "@/components/search/save-button";
-import { FollowButton } from "@/components/search/follow-button";
+import { StarButton } from "@/components/search/star-button";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
 import type { SearchResultCompany, SearchResultPosting } from "@/lib/search";
@@ -127,7 +127,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
           )}
           <span className="text-sm font-semibold">{company.name}</span>
         </Link>
-        <FollowButton companyId={company.id} />
+        <StarButton companyId={company.id} />
       </div>
 
       {/* Stats */}
@@ -149,9 +149,16 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
             tabIndex={0}
             onClick={() => onShowPosting?.(posting.id)}
             onKeyDown={(e) => { if (e.key === "Enter") onShowPosting?.(posting.id); }}
-            className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === selectedPostingId ? "bg-primary/10" : "hover:bg-border-soft"}`}
+            className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === selectedPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
           >
             <span className="min-w-0 flex-1 truncate text-sm">{posting.title ?? "—"}</span>
+            {posting.isActive === false && (
+              <span className="shrink-0 rounded bg-border-soft px-1 py-0.5 text-[10px] text-muted">
+                <Trans id="search.card.closed" comment="Label for inactive/closed job postings on company card">
+                  Closed
+                </Trans>
+              </span>
+            )}
             {posting.locations.length > 0 && (
               <span className={`shrink-0 text-xs text-muted ${posting.locations[0].geoType && posting.locations[0].geoType !== "city" ? "italic" : ""}`}>
                 {posting.locations[0].name}

@@ -54,7 +54,7 @@ export function SearchBar({
   onAddOccupation,
   onAddSeniority,
   onAddTechnology,
-  onSubmitSearch,
+  onSubmitSearch: _onSubmitSearch,
   locale: localeProp,
   keywords: keywordsProp,
   locations: locationsProp,
@@ -189,7 +189,7 @@ export function SearchBar({
             if (q) p.set("q", q);
             if (locSlugs) p.set("loc", locSlugs);
             const qs = p.toString();
-            router.push(lp(`/app${qs ? `?${qs}` : ""}`));
+            router.push(lp(`/explore${qs ? `?${qs}` : ""}`));
           }
         }
       } else if (item.kind === "occupation") {
@@ -204,7 +204,7 @@ export function SearchBar({
             const p = new URLSearchParams(searchParams.toString());
             const existing = p.get("occ");
             p.set("occ", existing ? `${existing},${occ.slug}` : occ.slug);
-            router.push(lp(`/app?${p.toString()}`));
+            router.push(lp(`/explore?${p.toString()}`));
           }
         }
       } else if (item.kind === "seniority") {
@@ -219,7 +219,7 @@ export function SearchBar({
             const p = new URLSearchParams(searchParams.toString());
             const existing = p.get("sen");
             p.set("sen", existing ? `${existing},${sen.slug}` : sen.slug);
-            router.push(lp(`/app?${p.toString()}`));
+            router.push(lp(`/explore?${p.toString()}`));
           }
         }
       } else if (item.kind === "technology") {
@@ -234,7 +234,7 @@ export function SearchBar({
             const p = new URLSearchParams(searchParams.toString());
             const existing = p.get("tech");
             p.set("tech", existing ? `${existing},${tech.slug}` : tech.slug);
-            router.push(lp(`/app?${p.toString()}`));
+            router.push(lp(`/explore?${p.toString()}`));
           }
         }
       } else {
@@ -293,7 +293,10 @@ export function SearchBar({
     const existingSens = senioritiesProp ?? pageActions?.getSeniorities() ?? [];
     const existingTechs = technologiesProp ?? pageActions?.getTechnologies?.() ?? [];
 
-    // Parse input then merge with existing filters
+    // Parse input then navigate via URL.
+    // We always use router.push so the server component handles the search
+    // in a single request, avoiding sequential server-action issues that can
+    // cause the client-side transition to hang indefinitely.
     parseSearchFilters({ q: input, locale: lang, userLat, userLng })
       .then((parsed) => {
         const kwSet = new Set(existingKw.map((k) => k.toLowerCase()));
@@ -307,27 +310,14 @@ export function SearchBar({
         const techIdSet = new Set(existingTechs.map((t) => t.id));
         const mergedTechs = [...existingTechs, ...(parsed.technologies ?? []).filter((t) => !techIdSet.has(t.id))];
 
-        if (onSubmitSearch) {
-          onSubmitSearch(mergedKw, mergedLocs, mergedOccs, mergedSens, mergedTechs);
-        } else if (pageActions) {
-          pageActions.submitSearch(mergedKw, mergedLocs, mergedOccs, mergedSens, mergedTechs);
-        } else {
-          // Navigate via URL — the server page handles the search
-          router.push(buildFilteredPath(lp("/app"), mergedKw, mergedLocs, undefined, mergedOccs, mergedSens, mergedTechs));
-        }
+        router.push(buildFilteredPath(lp("/explore"), mergedKw, mergedLocs, undefined, mergedOccs, mergedSens, mergedTechs));
       })
       .catch(() => {
         // Fallback: treat raw input as a keyword and navigate
         const mergedKw = [...existingKw, input];
-        if (onSubmitSearch) {
-          onSubmitSearch(mergedKw, existingLocs, existingOccs, existingSens, existingTechs);
-        } else if (pageActions) {
-          pageActions.submitSearch(mergedKw, existingLocs, existingOccs, existingSens, existingTechs);
-        } else {
-          router.push(buildFilteredPath(lp("/app"), mergedKw, existingLocs, undefined, existingOccs, existingSens, existingTechs));
-        }
+        router.push(buildFilteredPath(lp("/explore"), mergedKw, existingLocs, undefined, existingOccs, existingSens, existingTechs));
       });
-  }, [inputValue, lang, userLat, userLng, onSubmitSearch, getPageActions, router, lp, keywordsProp, locationsProp, occupationsProp, senioritiesProp, technologiesProp, currentKeywords]);
+  }, [inputValue, lang, userLat, userLng, getPageActions, router, lp, keywordsProp, locationsProp, occupationsProp, senioritiesProp, technologiesProp, currentKeywords]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
