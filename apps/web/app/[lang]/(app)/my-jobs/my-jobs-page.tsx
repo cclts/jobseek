@@ -4,9 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BarChart3, Briefcase, ChevronDown, ChevronRight } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import {
@@ -25,7 +23,7 @@ const BATCH = 20;
 const LS_KEY = "my-jobs-view";
 
 function useStatusGroupLabels(): Record<ApplicationStatus, string> {
-  useLingui();
+  const { t } = useLingui();
   return {
     saved: t({ id: "myJobs.group.saved", comment: "Status group heading: saved jobs", message: "Saved" }),
     applied: t({ id: "myJobs.group.applied", comment: "Status group heading: applied jobs", message: "Applied" }),

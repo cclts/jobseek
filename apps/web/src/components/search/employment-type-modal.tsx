@@ -3,12 +3,10 @@
 import { useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 function useEmploymentTypes() {
-  useLingui();
+  const { t } = useLingui();
   return [
     { value: "full_time", label: t({ id: "search.employmentType.fullTime", comment: "Employment type: full-time", message: "Full-time" }) },
     { value: "part_time", label: t({ id: "search.employmentType.partTime", comment: "Employment type: part-time", message: "Part-time" }) },

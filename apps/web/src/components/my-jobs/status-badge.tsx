@@ -1,7 +1,6 @@
 "use client";
 
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ApplicationStatus } from "@/lib/actions/my-jobs";
 
 const statusStyles: Record<ApplicationStatus, string> = {
@@ -15,7 +14,7 @@ const statusStyles: Record<ApplicationStatus, string> = {
 };
 
 function useStatusLabels(): Record<ApplicationStatus, string> {
-  useLingui();
+  const { t } = useLingui();
   return {
     saved: t({ id: "myJobs.status.saved", comment: "Saved status badge label", message: "Saved" }),
     applied: t({ id: "myJobs.status.applied", comment: "Applied status badge label", message: "Applied" }),

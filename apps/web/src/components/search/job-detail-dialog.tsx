@@ -4,9 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BarChart3, Building2, CalendarDays, ChevronDown, ChevronUp, Clock, Code2, DollarSign, MapPin, X } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 import { useLocalePath } from "@/lib/useLocalePath";
@@ -99,7 +97,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
   const lp = useLocalePath();
   const pageActions = usePageActions();
   const salary = useSalaryDisplay();
-  useLingui();
+  const { t } = useLingui();
   const filterByPrefix = t({ id: "search.detail.filterByPrefix", comment: "Tooltip prefix for clickable filter pills, followed by the value name", message: "Filter by" });
   const { getStatus, getSavedJobId, setStatus: setTrackingStatus } = useSavedJobs();
   const trackingStatus = getStatus(detail.id);
@@ -287,7 +285,7 @@ const LOCATIONS_COLLAPSED = 3;
 
 function LocationList({ locations, onClickLocation }: { locations: PostingDetail["locations"]; onClickLocation?: (loc: PostingDetail["locations"][number]) => void }) {
   const [expanded, setExpanded] = useState(false);
-  useLingui();
+  const { t } = useLingui();
   const filterByPrefix = t({ id: "search.detail.filterByPrefix", comment: "Tooltip prefix for clickable filter pills, followed by the value name", message: "Filter by" });
   const collapsible = locations.length > LOCATIONS_COLLAPSED;
   const visible = collapsible && !expanded ? locations.slice(0, LOCATIONS_COLLAPSED) : locations;
@@ -365,7 +363,7 @@ function ExtractedDetails({
   onAddTechnology?: (tech: { id: number; slug: string; name: string }) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  useLingui();
+  const { t } = useLingui();
   const filterByPrefix = t({ id: "search.detail.filterByPrefix", comment: "Tooltip prefix for clickable filter pills, followed by the value name", message: "Filter by" });
 
   return (
@@ -434,7 +432,7 @@ const statusBaseStyles = {
 };
 
 function StatusSelector({ status, hasInterviews, onChange }: { status: ApplicationStatus; hasInterviews: boolean; onChange: (s: ApplicationStatus) => void }) {
-  useLingui();
+  const { t } = useLingui();
   const statusLabels = {
     saved: t({ id: "search.tracker.notApplied", comment: "Application tracker status: not applied", message: "Not applied" }),
     applied: t({ id: "search.tracker.applied", comment: "Application tracker status: applied", message: "Applied" }),

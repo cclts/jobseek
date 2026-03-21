@@ -2,8 +2,7 @@
 
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Check, X, Plus, Star } from "lucide-react";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 import type { ApplicationStatus } from "@/lib/actions/my-jobs";
 
@@ -15,7 +14,7 @@ type Action = {
 };
 
 function useActionsByStatus(): Record<ApplicationStatus, Action[]> {
-  useLingui();
+  const { t } = useLingui();
   const markApplied = t({ id: "myJobs.action.markApplied", comment: "Quick action tooltip: mark job as applied", message: "Mark applied" });
   const addInterview = t({ id: "myJobs.action.addInterview", comment: "Quick action tooltip: add interview round", message: "Add interview" });
   const markRejected = t({ id: "myJobs.action.markRejected", comment: "Quick action tooltip: mark job as rejected", message: "Mark rejected" });

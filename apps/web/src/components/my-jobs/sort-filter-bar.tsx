@@ -2,14 +2,13 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ArrowUpDown, ChevronDown, LayoutGrid } from "lucide-react";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
 export type SortBy = "status_changed_at" | "saved_at" | "status" | "company_name";
 export type GroupBy = "company" | "status";
 
 function useSortOptions(): { value: SortBy; label: string }[] {
-  useLingui();
+  const { t } = useLingui();
   return [
     { value: "status_changed_at", label: t({ id: "myJobs.sort.recentlyUpdated", comment: "Sort option: recently updated", message: "Recently updated" }) },
     { value: "saved_at", label: t({ id: "myJobs.sort.dateSaved", comment: "Sort option: date saved", message: "Date saved" }) },
@@ -19,7 +18,7 @@ function useSortOptions(): { value: SortBy; label: string }[] {
 }
 
 function useGroupOptions(): { value: GroupBy; label: string }[] {
-  useLingui();
+  const { t } = useLingui();
   return [
     { value: "company", label: t({ id: "myJobs.group.company", comment: "Group by company option", message: "Company" }) },
     { value: "status", label: t({ id: "myJobs.group.status", comment: "Group by status option", message: "Status" }) },

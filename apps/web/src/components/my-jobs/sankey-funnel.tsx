@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { ResponsiveSankey } from "@nivo/sankey";
 import { useTheme } from "next-themes";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { FunnelData } from "@/lib/actions/my-jobs-stats";
 
 function useIsSmallScreen() {
@@ -36,7 +35,7 @@ function getColor(id: string): string {
 export function SankeyFunnel({ data }: { data: FunnelData }) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
-  useLingui();
+  const { t } = useLingui();
 
   const l = {
     saved: t({ id: "myJobs.funnel.saved", comment: "Sankey funnel node: saved jobs", message: "Saved" }),

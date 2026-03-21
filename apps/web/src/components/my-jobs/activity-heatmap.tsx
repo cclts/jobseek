@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef } from "react";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ActivityDay } from "@/lib/actions/my-jobs-stats";
 
 function formatLocal(d: Date): string {
@@ -40,7 +39,7 @@ function getLevel(count: number): number {
 }
 
 function useDayLabels(): string[] {
-  useLingui();
+  const { t } = useLingui();
   return [
     "",
     t({ id: "myJobs.heatmap.day.mon", comment: "Short Monday label for heatmap", message: "Mon" }),
@@ -53,7 +52,7 @@ function useDayLabels(): string[] {
 }
 
 function useMonthLabels(): string[] {
-  useLingui();
+  const { t } = useLingui();
   return [
     t({ id: "myJobs.heatmap.month.jan", comment: "Short January label", message: "Jan" }),
     t({ id: "myJobs.heatmap.month.feb", comment: "Short February label", message: "Feb" }),
@@ -75,6 +74,7 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const DAY_LABELS = useDayLabels();
   const MONTHS = useMonthLabels();
+  const { t } = useLingui();
   const noApplications = t({ id: "myJobs.heatmap.tooltipNone", comment: "Heatmap tooltip when no applications on a date", message: "No applications on {date}" });
   const oneApplication = t({ id: "myJobs.heatmap.tooltipOne", comment: "Heatmap tooltip for 1 application", message: "1 application on {date}" });
   const multipleApplications = t({ id: "myJobs.heatmap.tooltipMultiple", comment: "Heatmap tooltip for multiple applications", message: "{count} applications on {date}" });

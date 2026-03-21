@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Trans } from "@lingui/react/macro";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface SalaryOverrideProps {
   crawlerSalary: {
@@ -40,7 +38,7 @@ export function SalaryOverride({
     override.period ?? crawlerSalary.period ?? "yearly",
   );
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useLingui();
+  const { t } = useLingui();
   const minLabel = t({ id: "myJobs.salary.min", comment: "Minimum salary label", message: "Min" });
   const maxLabel = t({ id: "myJobs.salary.max", comment: "Maximum salary label", message: "Max" });
   const yearlyLabel = t({ id: "myJobs.salary.yearly", comment: "Yearly salary period option", message: "Yearly" });

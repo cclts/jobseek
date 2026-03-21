@@ -4,9 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Building2, X } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { getPostingDetail } from "@/lib/actions/search";
 import type { PostingDetail } from "@/lib/actions/search";
@@ -29,7 +27,7 @@ import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
 
 function useStatusOptionLabels(): Record<ApplicationStatus, string> {
-  useLingui();
+  const { t } = useLingui();
   return {
     saved: t({ id: "myJobs.statusOption.saved", comment: "Status option in dropdown: saved", message: "Saved" }),
     applied: t({ id: "myJobs.statusOption.applied", comment: "Status option in dropdown: applied", message: "Applied" }),
@@ -58,7 +56,7 @@ export function MyJobDetailPanel({
   const [jobDetail, setJobDetail] = useState<MyJobDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  useLingui();
+  const { t } = useLingui();
   const statusOptionLabels = useStatusOptionLabels();
   const changePlaceholder = t({ id: "myJobs.detail.changePlaceholder", comment: "Placeholder in status change dropdown", message: "Change..." });
 

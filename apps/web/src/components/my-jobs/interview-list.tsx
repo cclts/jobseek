@@ -2,9 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
-import { useLingui } from "@lingui/react";
-import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   INTERVIEW_TYPES,
   type InterviewEntry,
@@ -12,7 +10,7 @@ import {
 } from "@/lib/actions/my-jobs-types";
 
 function useTypeLabels(): Record<InterviewType, string> {
-  useLingui();
+  const { t } = useLingui();
   return {
     interview: t({ id: "myJobs.interviewType.interview", comment: "Interview type label: general interview", message: "Interview" }),
     phone_screen: t({ id: "myJobs.interviewType.phoneScreen", comment: "Interview type label: phone screen", message: "Phone Screen" }),
