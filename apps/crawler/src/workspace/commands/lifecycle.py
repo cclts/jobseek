@@ -63,12 +63,55 @@ def _load_existing_boards(slug: str) -> list[dict[str, str]]:
 
 
 @click.command()
+@click.argument("query")
+def search(query: str):
+    """Search existing companies by name, slug, or website.
+
+    Checks if a company already exists before creating a workspace.
+    """
+    companies_path = get_data_dir() / "companies.csv"
+    if not companies_path.exists():
+        out.info("search", "No companies.csv found")
+        return
+
+    _, rows = read_csv(companies_path)
+    q = query.lower()
+    matches = []
+    for r in rows:
+        slug = r.get("slug", "")
+        name = r.get("name", "")
+        website = r.get("website", "")
+        if q in slug.lower() or q in name.lower() or q in website.lower():
+            matches.append(r)
+
+    if not matches:
+        out.info("search", f"No companies matching '{query}'")
+        return
+
+    out.info("search", f"{len(matches)} match(es) for '{query}':")
+    for r in matches:
+        slug = r.get("slug", "?")
+        name = r.get("name", "?")
+        website = r.get("website", "")
+        industry = r.get("industry", "")
+        out.plain("search", f"  {slug} — {name} ({website}) [industry={industry}]")
+
+
+@click.command()
 @click.argument("slug")
 @click.option("--issue", type=int, default=None, help="GitHub issue number")
 @click.option("--pr", "pr_opt", type=int, default=None, help="Attach to existing PR number")
 @click.option("--reconfig", is_flag=True, help="Reconfigure an existing company")
 @click.option("--reset", is_flag=True, help="Purge managed clone and re-clone from scratch")
-def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset: bool):
+@click.option("--start-at", default=None, help="Start workflow at this step (reconfig only)")
+def new(
+    slug: str,
+    issue: int | None,
+    pr_opt: int | None,
+    reconfig: bool,
+    reset: bool,
+    start_at: str | None,
+):
     """Create workspace + stub CSV row + branch + draft PR.
 
     With --reconfig, creates a workspace for an existing company to
@@ -292,13 +335,20 @@ def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset:
 
     # For reconfig, advance workflow past setup/add_boards (already satisfied)
     if reconfig and existing_boards:
-        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
+        from src.workspace.workflow import WorkflowState, _all_step_defs, _save_wf_to_disk
+
+        step_id = start_at or "select_monitor"
+        valid_ids = {s.id for s in _all_step_defs()}
+        if step_id not in valid_ids:
+            out.die(f"Unknown step: {step_id!r}. Valid: {', '.join(sorted(valid_ids))}")
 
         wf = WorkflowState(
-            current_step="select_monitor",
+            current_step=step_id,
             current_board=existing_boards[0].get("board_slug", "").removeprefix(f"{slug}-"),
         )
         _save_wf_to_disk(slug, wf)
+    elif start_at:
+        out.warn("new", "--start-at is only used with --reconfig, ignoring")
 
     # Set as active workspace
     set_active_slug(slug)
@@ -606,6 +656,25 @@ def status(slug: str | None):
             print("  Status: no boards configured")
         else:
             print("  Status: in progress")
+
+        # Background discovery status
+        from src.workspace.state import discovery_status_path
+
+        disc_path = discovery_status_path(slug)
+        if disc_path.exists():
+            try:
+                import yaml
+
+                disc = yaml.safe_load(disc_path.read_text()) or {}
+                logo = disc.get("logo_discovery", "unknown")
+                career = disc.get("career_discovery", "unknown")
+                enrich = disc.get("enrichment", "unknown")
+                print("  Background discovery:")
+                print(f"    Logo discovery:   {logo}")
+                print(f"    Career discovery: {career}")
+                print(f"    Enrichment:       {enrich}")
+            except Exception:
+                pass
 
         # Last error
         if ws.last_error:

@@ -28,67 +28,48 @@ For each major decision (board URL, monitor, scraper), capture:
 
 Do not lock decisions purely because a probe suggested "Next: ...". Prefer direct site evidence and verify mismatches explicitly.
 
-### Step-by-Step
+### Workflow
 
-All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENTS.md for the full command reference.
+The agent runs `ws task --issue N` which guides it through the entire flow:
 
-1. **Validate the request**: Before creating any workspace, use web
-   research to verify the request is actionable:
-   - Check `data/companies.csv` to confirm the company isn't already configured
-   - Confirm the company exists and is currently operating
-   - Find a public careers page with at least one visible job listing
-   - On failure: `ws reject --issue N --reason <key> --message "..."` — this comments with a structured reason marker, closes the issue, and stops
-   - See AGENTS.md for the full list of rejection reasons and edge cases
+1. **Pre-verify:** `ws search` to check duplicates, web research to confirm
+   the company exists with a public careers page
+2. **Create workspace:** `ws new <slug> --issue N`
+3. **Parallel setup:** `ws task` renders the parallel orchestrator which tells
+   the agent to spawn background subagents for enrichment, logos, and board
+   discovery. `ws set --website` triggers background auto-discovery.
+4. **Progressive board processing:** `ws await-board` blocks until Track C
+   adds a board, then the main agent probes and configures it immediately.
+   Config testing spawns parallel subagents per monitor+scraper combo.
+5. **Submit:** `ws submit` validates, commits, pushes. `ws task complete`
+   exports the trace and marks the PR ready.
 
-2. **Claim the issue**: `ws new <slug> --issue N` — checks gh auth, checks for
-   existing PRs (active → stop, stale → comment and proceed), creates branch,
-   seeds stub company row, opens draft PR. Sets the active workspace so all
-   subsequent commands auto-resolve the slug.
+See [10 — Parallel Agent Pipeline](./10-parallel-agent-pipeline.md) for the
+full design, config selection policy, quality enforcement, and subagent
+prompt templates.
 
-3. **Set company details**: `ws set --name "..." --website "..." --logo-url "..." --icon-url "..." --logo-type <wordmark|wordmark+icon|icon>`
-   - Agent researches: official name, homepage, full primary logo URL, and minified square logo/icon URL
-   - Label the selected full logo via `--logo-type` (`wordmark`, `wordmark+icon`, or `icon`)
-   - Use direct image file URLs (not pages containing images), brand-correct assets only
-   - Prefer transparent-background assets for both logo and icon when available
-   - URL validation is advisory — values are always saved
+All ws commands are documented in `apps/crawler/AGENTS.md`.
 
-4. **Add board and probe monitors**: `ws add board <alias> --url <board-url>` then `ws probe`
-   - The board URL must be the actual listings source (ATS board/feed), not a marketing careers landing page
-   - Probe tries all monitor types and reports results with suggested configs
-   - See [04 — Monitors and Scrapers](./04-monitors-and-scrapers.md) for details
+### Reconfiguration
 
-5. **Select and test monitor**: `ws select monitor <type> [--as <name>]` then `ws run monitor`
-   - Use `--as <name>` to try multiple configurations under different names
-   - Check the career page for a displayed job count (e.g. "Showing 247 open positions")
-   - Compare crawled count against the website's count (should be within ~10%)
-   - If there's a significant gap, iterate config for the same type first (`ws help monitor <type>` + `--as <name>`) before switching monitor type
-   - Use `ws select config <name>` to switch back to a previously tested config
-   - If 0 jobs returned but validation passed in step 1, it's a monitor misconfiguration — debug systematically
-   - See "Verification and Iteration" below for details
+To reconfigure an existing company (broken scraper, changed site, user report):
 
-6. **Select and test scraper** (non-API monitors only): `ws select scraper <type>` then `ws run scraper`
-   - API monitors (greenhouse, lever, ashby, etc.) return full data and auto-skip this step
-   - Verify extraction on 2–3 sample job URLs (title, location, description)
-   - If extraction fails, revise config first (`ws help scraper <type>`) and switch scraper type only after targeted config attempts fail
+```
+ws new <slug> --reconfig [--start-at <step>]
+```
 
-7. **Record feedback**: `ws feedback --title clean --description clean --verdict good`
-   - Mandatory before submit — quality gates enforce this
-   - `description` is expected to be HTML; markup alone is not a quality issue
-   - Verdict options: `good`, `acceptable`, `poor` (submit with `--force`), `unusable` (cannot submit)
-   - If verdict is `poor` or `unusable`: `ws reject-config <name> --reason "..."` and try another config
+This pre-loads existing company data and boards from CSV and starts the
+workflow at the specified step. Start-at options:
 
-8. **Escalate to code changes** (if needed): When no existing config works:
-   - Record feedback with `--verdict unusable` to document what failed
-   - `ws del` to clean up the config-only workspace
-   - Create a new PR on a `fix-crawler/<description>` branch with `review-code` label
-   - Reference the closed draft PR and ensure the new PR closes the original issue
-   - See "Escalating to Code Changes" below for details
+| Step | Use when |
+|------|----------|
+| `add_boards` | Board URL changed or site fully migrated |
+| `select_monitor` | Monitor broke (default) |
+| `select_scraper` | Only the scraper broke, monitor still works |
+| `verify_and_feedback` | Need to re-verify extraction quality |
 
-9. **Submit**: `ws submit [--summary "..."] [--force]` — runs quality gates, writes CSV,
-   validates, commits, pushes, posts crawl stats + transcript on PR, marks PR ready, posts
-   completion on issue. Submit is checkpoint-based — if it fails partway, use `ws resume` to
-   diagnose and re-run. Then advance task state with `ws task next --notes "..."`
-   (and later `ws task complete`). CI handles labeling and merging (see [05 — Auto-Merge](./05-auto-merge.md)).
+Use `ws task back --to <step> --reason "..."` within a reconfig run if you
+discover deeper breakage than expected.
 
 ## Verification and Iteration
 

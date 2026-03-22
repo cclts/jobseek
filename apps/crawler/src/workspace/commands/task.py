@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import click
 
+from src.workspace import log as action_log
 from src.workspace import output as out
 from src.workspace.errors import GitError
 from src.workspace.state import (
@@ -37,6 +38,7 @@ from src.workspace.state import (
     load_workspace,
     resolve_slug,
     set_active_slug,
+    ws_log_path,
 )
 from src.workspace.workflow import (
     WorkflowState,
@@ -48,9 +50,9 @@ from src.workspace.workflow import (
     check_gate,
     create_casestudy_entry,
     create_kb_entry,
+    go_back,
     read_kb_entry,
     render_step,
-    resolve_current_step,
     search_kb,
     should_skip,
 )
@@ -128,7 +130,7 @@ def task(ctx, issue: int | None, pick_next: bool):
                 _pre_verify(issue)
                 return
 
-    # Active workspace → show current step
+    # Active workspace → show parallel orchestrator instructions
     slug = resolve_slug(None)
 
     try:
@@ -145,20 +147,35 @@ def task(ctx, issue: int | None, pick_next: bool):
         out.info("task", "Workflow complete! All steps done.")
         return
 
-    try:
-        step, ws, boards, wf, board = resolve_current_step(slug)
-    except FileNotFoundError:
-        out.die(f"Workspace {slug!r} not found. Run: ws task --issue <N>")
-        return
+    ws = load_workspace(slug)
+    boards = list_boards(slug)
 
-    # Build context and render
-    ctx_vars = build_context(ws, boards, wf, board)
-    instructions = render_step(step, ctx_vars)
+    # Copy prompt templates into workspace so the agent doesn't need codebase access
+    from src.workspace.state import ws_dir
+    from src.workspace.workflow import render_parallel_prompt
 
-    # Print header
-    _print_step_header(step, wf, boards)
+    prompts_dir = ws_dir(slug) / "prompts"
+    if not prompts_dir.exists():
+        import shutil
+        from pathlib import Path
 
-    # Print instructions
+        src_prompts = Path(__file__).parent.parent / "steps" / "parallel"
+        if src_prompts.is_dir():
+            shutil.copytree(src_prompts, prompts_dir)
+
+    ctx = {
+        "slug": slug,
+        "issue": str(ws.issue or ""),
+        "website": ws.website or "",
+        "company_name": ws.name or "",
+        "prompts_dir": str(prompts_dir),
+    }
+    instructions = render_parallel_prompt("orchestrator", ctx)
+
+    out.plain("task", f"Workspace: {slug} | Issue: #{ws.issue or '?'}")
+    if boards:
+        out.plain("task", f"Boards: {', '.join(b.alias for b in boards)}")
+    print()
     print(instructions)
 
 
@@ -260,6 +277,51 @@ def task_next(notes: str):
     print(instructions)
 
 
+@task.command(name="back")
+@click.option("--to", "target_step", required=True, help="Step ID to go back to")
+@click.option("--reason", required=True, help="Why backtracking is needed")
+@click.option("--board", "board_alias", default=None, help="Board alias (for per-board steps)")
+def task_back(target_step: str, reason: str, board_alias: str | None):
+    """Move workflow backward to a previous step.
+
+    Does not discard any configs or state — only moves the workflow cursor.
+    The reason is logged to reflections for auditability.
+    """
+    slug = resolve_slug(None)
+    wf = _load_wf_from_disk(slug)
+
+    if wf.failed:
+        out.die("Workflow is in failed state.")
+    if wf.current_step == "done":
+        out.die("Workflow already complete — cannot go back.")
+
+    target, message = go_back(slug, target_step, reason, board_alias)
+
+    if message:
+        out.die(message)
+
+    out.info("task", f"Moved back to step: {target.title}")
+    out.plain("task", f"Reason: {reason}")
+
+    # Show the target step instructions
+    ws = load_workspace(slug)
+    boards = list_boards(slug)
+    wf = _load_wf_from_disk(slug)
+    board = None
+    if target.phase == "per_board" and wf.current_board:
+        for b in boards:
+            if b.alias == wf.current_board:
+                board = b
+                break
+
+    ctx_vars = build_context(ws, boards, wf, board)
+    instructions = render_step(target, ctx_vars)
+
+    print()
+    _print_step_header(target, wf, boards)
+    print(instructions)
+
+
 @task.command(name="status")
 def task_status():
     """Show workflow progress."""
@@ -348,6 +410,9 @@ def task_complete():
 
         unclaim_issue(ws.issue)
 
+    # Log completion (timestamp used for transcript discovery)
+    action_log.append(ws_log_path(slug), "complete", True, "Workflow complete")
+
     out.info("task", "Workflow complete! Nice work. Do not pick another issue — stop here.")
 
     # Print summary of reflections
@@ -355,6 +420,30 @@ def task_complete():
     if non_none:
         print()
         out.plain("summary", f"{len(non_none)} reflection(s) recorded during this run.")
+
+    # Export trace and commit to PR branch (best-effort, don't block completion)
+    try:
+        from src.shared.constants import get_data_dir
+        from src.workspace.trace import export_trace
+
+        trace_path = export_trace(slug, get_data_dir().parent / "traces")
+        if trace_path:
+            out.info("trace", f"Exported: {trace_path}")
+            # Commit and push trace to the PR branch (skip in local mode)
+            if ws.pr and not is_local_mode():
+                try:
+                    from src.workspace.git import add_files, commit, push
+
+                    add_files([str(trace_path)])
+                    commit(f"Add agent trace for {slug}")
+                    push(ws.branch)
+                    out.info("trace", "Trace committed and pushed to PR branch")
+                except Exception as git_exc:
+                    out.warn("trace", f"Trace exported but git push failed: {git_exc}")
+        else:
+            out.plain("trace", "No matching transcript found — export manually if needed")
+    except Exception as exc:
+        out.warn("trace", f"Could not export trace: {exc}")
 
 
 @task.command(name="fail")

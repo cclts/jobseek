@@ -326,18 +326,31 @@ class TestAdvance:
         wf = WorkflowState(current_step="setup")
         _save_wf_to_disk(slug, wf)
 
-        # Advance from setup (state gate — company_complete)
+        # Advance from setup (no gate — company_complete moved to submit)
         next_step, msg = advance(slug, "Company configured")
         assert next_step is not None
         assert next_step.id == "add_boards"
 
-    def test_advance_blocks_on_failed_gate(self, workspace):
+    def test_advance_from_setup_with_incomplete_company(self, workspace, board_careers):
         slug, ws, ws_root = workspace
-        # Remove company name to fail the gate
+        # Remove company metadata — setup gate should still pass
         ws.name = ""
+        ws.descriptions = {}
+        ws.industry = None
         save_workspace(ws)
 
         wf = WorkflowState(current_step="setup")
+        _save_wf_to_disk(slug, wf)
+
+        next_step, msg = advance(slug, "Starting board work before enrichment")
+        assert next_step is not None
+        assert next_step.id == "add_boards"
+        assert msg == ""
+
+    def test_advance_blocks_on_failed_gate(self, workspace):
+        slug, ws, ws_root = workspace
+        # No boards added — all_boards_added gate should fail
+        wf = WorkflowState(current_step="add_boards")
         _save_wf_to_disk(slug, wf)
 
         next_step, msg = advance(slug, "trying to advance")
@@ -545,6 +558,98 @@ class TestLocalMode:
 
         monkeypatch.setenv("WS_LOCAL", "")
         assert not is_local_mode()
+
+
+class TestBacktrack:
+    def test_back_global_to_global(self, workspace, board_careers):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState(current_step="add_boards")
+        _save_wf_to_disk(slug, wf)
+
+        from src.workspace.workflow import go_back
+
+        target, msg = go_back(slug, "setup", "Need to fix company name")
+        assert msg == ""
+        assert target.id == "setup"
+
+        wf = _load_wf_from_disk(slug)
+        assert wf.current_step == "setup"
+        assert wf.current_board is None
+        assert any("BACKTRACK" in r["notes"] for r in wf.reflections)
+
+    def test_back_per_board_same_board(self, workspace, board_careers):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState(
+            current_step="verify_and_feedback",
+            current_board="careers",
+        )
+        _save_wf_to_disk(slug, wf)
+
+        from src.workspace.workflow import go_back
+
+        target, msg = go_back(slug, "select_monitor", "Job count mismatch")
+        assert msg == ""
+        assert target.id == "select_monitor"
+
+        wf = _load_wf_from_disk(slug)
+        assert wf.current_board == "careers"
+
+    def test_back_per_board_to_global(self, workspace, board_careers):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState(
+            current_step="select_monitor",
+            current_board="careers",
+        )
+        _save_wf_to_disk(slug, wf)
+
+        from src.workspace.workflow import go_back
+
+        target, msg = go_back(slug, "add_boards", "Found another board")
+        assert msg == ""
+
+        wf = _load_wf_from_disk(slug)
+        assert wf.current_step == "add_boards"
+        assert wf.current_board is None
+
+    def test_back_removes_from_completed_boards(self, workspace, board_careers, board_second):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState(
+            current_step="select_monitor",
+            current_board="careers-de",
+            completed_boards=["careers"],
+        )
+        _save_wf_to_disk(slug, wf)
+
+        from src.workspace.workflow import go_back
+
+        target, msg = go_back(slug, "select_monitor", "Redo careers", board_alias="careers")
+        assert msg == ""
+
+        wf = _load_wf_from_disk(slug)
+        assert wf.current_board == "careers"
+        assert "careers" not in wf.completed_boards
+
+    def test_back_invalid_step(self, workspace):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState(current_step="add_boards")
+        _save_wf_to_disk(slug, wf)
+
+        from src.workspace.workflow import go_back
+
+        target, msg = go_back(slug, "nonexistent", "reason")
+        assert target is None
+        assert "Unknown step" in msg
+
+    def test_back_same_step(self, workspace):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState(current_step="add_boards")
+        _save_wf_to_disk(slug, wf)
+
+        from src.workspace.workflow import go_back
+
+        target, msg = go_back(slug, "add_boards", "reason")
+        assert target is None
+        assert "Already at" in msg
 
 
 class TestWorkflowFail:

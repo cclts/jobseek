@@ -6,6 +6,7 @@ import asyncio
 import json
 import math
 import random
+import re
 import time
 
 import click
@@ -1135,12 +1136,30 @@ def _get_field(obj: object, field: str) -> object:
 @click.command(name="monitor")
 @click.argument("slug", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
-def run_monitor(slug: str | None, board_alias: str | None):
+@click.option("--config", "config_name", default=None, help="Named config to run (default: active)")
+def run_monitor(slug: str | None, board_alias: str | None, config_name: str | None):
     """Test-crawl the active board with its selected monitor."""
     slug = resolve_slug(slug)
     ws, board = _resolve_board(slug, board_alias)
 
-    if not board.monitor_type:
+    # Resolve which config to use
+    if config_name:
+        if config_name not in board.configs:
+            out.die(
+                f"Config {config_name!r} not found. "
+                f"Available: {', '.join(board.configs) or '(none)'}"
+            )
+        _target_cfg = board.configs[config_name]
+        mon_type = _target_cfg.get("monitor_type")
+        mon_config = _target_cfg.get("monitor_config") or {}
+        if not mon_type:
+            out.die(f"Config {config_name!r} has no monitor_type")
+    else:
+        mon_type = board.monitor_type
+        mon_config = board.monitor_config
+        _target_cfg = None  # will use board._ensure_cfg() for active
+
+    if not mon_type:
         out.die("No monitor selected. Run: ws select monitor <type>")
 
     # Create artifact directory before the run so monitor_one can write raw data
@@ -1168,8 +1187,8 @@ def run_monitor(slug: str | None, board_alias: str | None):
                 start = time.monotonic()
                 result = await monitor_one(
                     board.url,
-                    board.monitor_type,
-                    board.monitor_config or None,
+                    mon_type,
+                    mon_config or None,
                     http,
                     artifact_dir=run_dir,
                     pw=pw,
@@ -1184,16 +1203,16 @@ def run_monitor(slug: str | None, board_alias: str | None):
     except Exception as exc:
         detail = str(exc).strip() or exc.__class__.__name__
         out.error("monitor", f"Run failed: {detail}")
-        out.plain("monitor", f"Monitor: {board.monitor_type} | Board: {board.url}")
+        out.plain("monitor", f"Monitor: {mon_type} | Board: {board.url}")
         out.plain("monitor", "Try:")
         out.plain("monitor", "  ws probe monitor -n <current-job-count>")
-        out.plain("monitor", f"  ws help monitor {board.monitor_type}")
+        out.plain("monitor", f"  ws help monitor {mon_type}")
 
         if "Cannot derive" in detail and ("token" in detail.lower() or "slug" in detail.lower()):
             key = "token" if "token" in detail.lower() else "slug"
             out.plain(
                 "monitor",
-                f'  ws select monitor {board.monitor_type} --config \'{{"{key}": "..."}}\'',
+                f'  ws select monitor {mon_type} --config \'{{"{key}": "..."}}\'',
             )
 
         out.plain("monitor", "  ws task troubleshoot 'monitor failed'")
@@ -1206,11 +1225,23 @@ def run_monitor(slug: str | None, board_alias: str | None):
     job_count = len(result.urls)
     has_rich = result.jobs_by_url is not None
 
-    # Regression detection: previous run had jobs, now 0
-    prev_jobs = (board.monitor_run or {}).get("jobs", 0)
+    # Resolve the config dict for write-back
+    cfg = _target_cfg if _target_cfg is not None else board._ensure_cfg()
 
-    # Store results in board
-    board.monitor_run = {
+    # Regression detection: previous run had jobs, now 0
+    prev_jobs = (cfg.get("run") or {}).get("jobs", 0)
+
+    # Store description samples for quality gate validation (rich monitors)
+    desc_samples: list[dict] = []
+    if result.jobs_by_url:
+        for job in list(result.jobs_by_url.values())[:5]:
+            desc = getattr(job, "description", None)
+            if desc:
+                plain = re.sub(r"<[^>]+>", "", desc).strip()
+                desc_samples.append({"length": len(plain), "snippet": plain[:200]})
+
+    # Store results
+    run_data: dict = {
         "jobs": job_count,
         "time": round(elapsed, 1),
         "has_rich_data": has_rich,
@@ -1219,9 +1250,11 @@ def run_monitor(slug: str | None, board_alias: str | None):
         .datetime.now(__import__("datetime").timezone.utc)
         .strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
+    if desc_samples:
+        run_data["description_samples"] = desc_samples
+    cfg["run"] = run_data
 
     # Mark config as tested and record measured cost
-    cfg = board._ensure_cfg()
     cfg["status"] = "tested"
     cost = cfg.get("cost") or {}
     cost["monitor_per_cycle"] = round(elapsed, 2)
@@ -1249,7 +1282,7 @@ def run_monitor(slug: str | None, board_alias: str | None):
             pct = round(count / total * 100) if total else 0
             quality["fields"][field] = {"count": count, "pct": pct}
         save_quality(run_dir, quality)
-        board.monitor_run["quality"] = {f: v["count"] for f, v in quality["fields"].items()}
+        run_data["quality"] = {f: v["count"] for f, v in quality["fields"].items()}
 
     out.plain("artifacts", f"Saved: {run_dir}")
 
@@ -1266,12 +1299,11 @@ def run_monitor(slug: str | None, board_alias: str | None):
             "then iterate monitor config before switching type. "
             "Try: ws task troubleshoot 'zero jobs'",
         )
-        if board.monitor_type:
-            out.plain("monitor", f"Config reference: ws help monitor {board.monitor_type}")
+        if mon_type:
+            out.plain("monitor", f"Config reference: ws help monitor {mon_type}")
             out.plain(
                 "monitor",
-                "Try: ws select monitor "
-                f"{board.monitor_type} --as {board.monitor_type}-alt --config '{{...}}'",
+                f"Try: ws select monitor {mon_type} --as {mon_type}-alt --config '{{...}}'",
             )
         if prev_jobs > 0:
             out.warn(
@@ -1308,11 +1340,7 @@ def run_monitor(slug: str | None, board_alias: str | None):
         )
 
     # url_filter tip for sitemap monitors without a filter
-    if (
-        board.monitor_type == "sitemap"
-        and job_count > 0
-        and not (board.monitor_config or {}).get("url_filter")
-    ):
+    if mon_type == "sitemap" and job_count > 0 and not (mon_config or {}).get("url_filter"):
         sample_urls = sorted(result.urls)[:20]
         if sample_urls:
             from os.path import commonprefix
@@ -1352,7 +1380,6 @@ def run_monitor(slug: str | None, board_alias: str | None):
         # Auto-configure scraper based on description coverage
         desc_count = quality["fields"].get("description", {}).get("count", 0) if quality else 0
         desc_pct = (desc_count / quality["total"] * 100) if quality and quality["total"] else 0
-        cfg = board._ensure_cfg()
         if cfg.get("scraper_type") == "skip" and desc_pct < 80 and quality and quality["total"] > 0:
             # Rich monitor auto-skipped scraper at select time, but
             # descriptions are insufficient — override to allow scraper
@@ -1393,7 +1420,6 @@ def run_monitor(slug: str | None, board_alias: str | None):
                 "Monitor returned structured data but no descriptions — scraper needed",
             )
     else:
-        cfg = board._ensure_cfg()
         if cfg.get("scraper_type"):
             out.plain(
                 "monitor",
@@ -1515,19 +1541,40 @@ def select_scraper(
 @click.argument("slug", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
 @click.option("--url", "urls", multiple=True, help="Specific URLs to scrape (repeatable)")
-def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]):
+@click.option("--config", "config_name", default=None, help="Named config to run (default: active)")
+def run_scraper(
+    slug: str | None, board_alias: str | None, urls: tuple[str, ...], config_name: str | None
+):
     """Test-scrape sample job pages from the active board."""
     slug = resolve_slug(slug)
     ws, board = _resolve_board(slug, board_alias)
 
-    if not board.scraper_type:
+    # Resolve which config to use
+    if config_name:
+        if config_name not in board.configs:
+            out.die(
+                f"Config {config_name!r} not found. "
+                f"Available: {', '.join(board.configs) or '(none)'}"
+            )
+        _target_cfg = board.configs[config_name]
+        scr_type = _target_cfg.get("scraper_type")
+        scr_config = _target_cfg.get("scraper_config") or {}
+        if not scr_type:
+            out.die(f"Config {config_name!r} has no scraper_type")
+        sample_urls_source = (_target_cfg.get("run") or {}).get("sample_urls", [])
+    else:
+        scr_type = board.scraper_type
+        scr_config = board.scraper_config
+        sample_urls_source = board.monitor_run.get("sample_urls", [])
+        _target_cfg = None
+
+    if not scr_type:
         out.die("No scraper selected. Run: ws select scraper <type>")
 
     # Determine which URLs to scrape
     target_urls: list[str] = list(urls)
     if not target_urls:
-        # Use all stored samples (already randomly selected by run monitor)
-        target_urls = board.monitor_run.get("sample_urls", [])
+        target_urls = sample_urls_source
         if not target_urls:
             out.die("No URLs available. Run the monitor first, or provide --url.")
 
@@ -1562,8 +1609,8 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
                     try:
                         content = await scrape_one(
                             url,
-                            board.scraper_type,
-                            board.scraper_config or None,
+                            scr_type,
+                            scr_config or None,
                             http,
                             artifact_dir=run_dir,
                             job_id=job_id,
@@ -1591,24 +1638,35 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
     times = [e for _, _, e in results]
     avg_time = sum(times) / len(times) if times else 0
 
-    board.scraper_run = {
+    # Store description samples for quality gate validation
+    desc_samples = []
+    for _, content, _ in results:
+        if content.description and len(desc_samples) < 5:
+            plain = re.sub(r"<[^>]+>", "", content.description).strip()
+            desc_samples.append({"length": len(plain), "snippet": plain[:200]})
+
+    scraper_run_data = {
         "count": len(results),
         "avg_time": round(avg_time, 1),
         "titles": titles_found,
         "descriptions": descs_found,
         "locations": locations_found,
+        "description_samples": desc_samples,
         "ran_at": __import__("datetime")
         .datetime.now(__import__("datetime").timezone.utc)
         .strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
-    # Mark config as tested and record measured scraper cost
-    cfg = board._ensure_cfg()
+    # Resolve the config dict for write-back
+    cfg = _target_cfg if _target_cfg is not None else board._ensure_cfg()
+
+    cfg["scraper_run"] = scraper_run_data
     cfg["status"] = "tested"
     cost = cfg.get("cost") or {}
     cost["scraper_per_job"] = round(avg_time, 2)
     # Update initial load estimate using measured per-job time
-    n_jobs = board.monitor_run.get("jobs", 200) if board.monitor_run else 200
+    mon_run = cfg.get("run") or board.monitor_run or {}
+    n_jobs = mon_run.get("jobs", 200)
     cost["initial_load"] = round(_estimate_initial_load(n_jobs, avg_time), 2)
     cfg["cost"] = cost
 
@@ -2040,6 +2098,23 @@ def feedback_cmd(
         cov = tier.get("coverage", "?")
         qual = tier.get("quality", "?")
         out.plain("feedback", f"  {tier_name}: {cov} ({qual})")
+    # Warn if description rated clean but samples are suspiciously short
+    desc_fb = fields_fb.get("description", {})
+    if desc_fb.get("quality") == "clean":
+        scraper_run = cfg.get("scraper_run") or {}
+        run_data_fb = cfg.get("run") or {}
+        samples = (
+            scraper_run.get("description_samples") or run_data_fb.get("description_samples") or []
+        )
+        short = [s for s in samples if s.get("length", 0) < 200]
+        if short and len(short) >= len(samples) // 2:
+            out.warn(
+                "feedback",
+                f"{len(short)}/{len(samples)} sample descriptions are under "
+                f"200 chars — verify they contain real job content, not just "
+                f"titles or boilerplate",
+            )
+
     if verdict == "unusable":
         out.warn("feedback", "Verdict is unusable — cannot submit")
     elif verdict == "poor":
@@ -2097,6 +2172,25 @@ def run_quality_gates(
             blockers.append(f"Board {b.alias}: verdict is unusable")
         elif fb.get("verdict") == "poor":
             blockers.append(f"Board {b.alias}: verdict is poor (use --force)")
+
+        # Check description quality from stored samples
+        scraper_run = cfg.get("scraper_run") or {}
+        run_data = cfg.get("run") or {}
+        desc_samples = (
+            scraper_run.get("description_samples") or run_data.get("description_samples") or []
+        )
+        if desc_samples:
+            short_count = sum(1 for s in desc_samples if s.get("length", 0) < 200)
+            if short_count == len(desc_samples):
+                warnings.append(
+                    f"Board {b.alias}: all {len(desc_samples)} sample descriptions "
+                    f"are under 200 chars — may be trivial (titles, boilerplate)"
+                )
+            elif short_count > len(desc_samples) // 2:
+                warnings.append(
+                    f"Board {b.alias}: {short_count}/{len(desc_samples)} sample "
+                    f"descriptions are under 200 chars"
+                )
 
     # Check for image artifacts (original files saved by ws set).
     # Skip when logos already exist on CDN (reconfig mode — URLs are HTTP).
