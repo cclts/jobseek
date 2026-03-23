@@ -85,6 +85,37 @@ export function WatchlistViewPage({
     }
   }, [title, detail.title, detail.id, user?.username, router, lp]);
 
+  // ── Editable description ──
+  const [description, setDescription] = useState(detail.description ?? "");
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [savingDescription, setSavingDescription] = useState(false);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editingDescription) {
+      const el = descriptionRef.current;
+      if (el) {
+        el.focus();
+        el.selectionStart = el.value.length;
+      }
+    }
+  }, [editingDescription]);
+
+  const saveDescription = useCallback(async () => {
+    const trimmed = description.trim();
+    if (trimmed === (detail.description ?? "")) {
+      setEditingDescription(false);
+      return;
+    }
+    setSavingDescription(true);
+    await updateWatchlist({
+      watchlistId: detail.id,
+      description: trimmed || null,
+    });
+    setSavingDescription(false);
+    setEditingDescription(false);
+  }, [description, detail.description, detail.id]);
+
   // ── Editable companies ──
   const [companies, setCompanies] = useState<Company[]>(detail.companies);
   const [anyCompany, setAnyCompany] = useState(detail.filters.anyCompany ?? false);
@@ -306,8 +337,57 @@ export function WatchlistViewPage({
           />
         </div>
 
+        {/* Description */}
+        {isOwner ? (
+          editingDescription ? (
+            <div className="flex items-start gap-2">
+              <textarea
+                ref={descriptionRef}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    saveDescription();
+                  }
+                  if (e.key === "Escape") {
+                    setDescription(detail.description ?? "");
+                    setEditingDescription(false);
+                  }
+                }}
+                onBlur={saveDescription}
+                maxLength={200}
+                rows={2}
+                className="w-full resize-none rounded-md border border-border-soft bg-transparent px-2 py-1 text-sm text-muted outline-none focus:border-primary"
+                placeholder={t({ id: "watchlists.view.descriptionPlaceholder", comment: "Placeholder for watchlist description textarea", message: "Describe this watchlist..." })}
+              />
+              {savingDescription && <Loader2 size={14} className="mt-1.5 animate-spin text-muted" />}
+            </div>
+          ) : description ? (
+            <p
+              className="group/desc line-clamp-2 cursor-pointer rounded px-2 py-1 -mx-2 -my-1 text-sm text-muted transition-colors hover:bg-border-soft flex items-start gap-2"
+              onClick={() => setEditingDescription(true)}
+              title={t({ id: "watchlists.view.editDescription", comment: "Tooltip for clicking to edit watchlist description", message: "Click to edit description" })}
+            >
+              <span className="line-clamp-2">{description}</span>
+              <Pencil size={12} className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity group-hover/desc:opacity-100" />
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditingDescription(true)}
+              className="flex items-center gap-1.5 cursor-pointer text-sm text-muted/60 transition-colors hover:text-muted"
+            >
+              <Pencil size={12} />
+              {t({ id: "watchlists.view.addDescription", comment: "Link to add a description to the watchlist", message: "Add description" })}
+            </button>
+          )
+        ) : description ? (
+          <p className="text-sm text-muted">{description}</p>
+        ) : null}
+
         {/* Companies */}
-        <div className="space-y-2">
+        <div className="space-y-2 !mt-6">
           {isOwner && (
             <div className="flex items-center gap-2">
               <button
