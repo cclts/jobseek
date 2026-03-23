@@ -1186,7 +1186,35 @@ def submit(slug: str | None, summary: str | None, force: bool):
         log_msg = "CSV updated, validated (local mode — git/PR steps skipped)"
     else:
         log_msg = f"CSV updated, validated, committed, pushed, PR #{ws.pr} ready"
+
+        # Mark PR ready for review — submit means data is complete
+        if ws.pr:
+            try:
+                from src.workspace.git import mark_pr_ready
+
+                mark_pr_ready(ws.pr)
+                out.info("github", f"PR #{ws.pr} marked ready for review")
+            except Exception:
+                out.warn("github", f"Could not mark PR #{ws.pr} ready — do it manually")
+
     action_log.append(ws_log_path(slug), "submit", True, log_msg)
+
+    # Advance workflow to "reflect" so task complete can proceed.
+    # The parallel orchestrator calls submit directly without stepping
+    # through the workflow, leaving the cursor at "setup". A successful
+    # submit means all gates have been satisfied.
+    try:
+        from src.workspace.workflow import _load_wf_from_disk, _save_wf_to_disk
+
+        wf = _load_wf_from_disk(slug)
+        if wf.current_step not in ("reflect", "done") and not wf.failed:
+            wf.current_step = "reflect"
+            # Mark all boards as completed
+            boards = list_boards(slug)
+            wf.completed_boards = [b.alias for b in boards]
+            _save_wf_to_disk(slug, wf)
+    except FileNotFoundError:
+        pass  # No workflow state — agent ran outside task workflow
 
     out.info("workspace", "Submit complete")
 
