@@ -13,8 +13,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n.t({ id: "license.meta.title", message: "License" });
-  const description = i18n.t({
+  const title = i18n._({ id: "license.meta.title", message: "License" });
+  const description = i18n._({
     id: "license.meta.description",
     message: "Licensing terms for Job Seek application code (MIT) and job data (CC BY-NC 4.0).",
   });

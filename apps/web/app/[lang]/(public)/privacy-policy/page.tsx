@@ -13,8 +13,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n.t({ id: "privacy.meta.title", message: "Privacy Policy" });
-  const description = i18n.t({
+  const title = i18n._({ id: "privacy.meta.title", message: "Privacy Policy" });
+  const description = i18n._({
     id: "privacy.meta.description",
     message: "How Job Seek collects, uses, and protects your personal data.",
   });

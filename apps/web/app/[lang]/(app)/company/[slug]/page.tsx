@@ -27,26 +27,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   ]);
   if (!company) return {};
 
-  const title = i18n.t({
+  const title = i18n._({
     id: "company.meta.title",
     message: "Jobs at {name}",
     values: { name: company.name },
   });
   const count = company.activeJobCount;
   const countText = count > 0
-    ? i18n.t({
+    ? i18n._({
         id: "company.meta.positionCount",
         message: "{count, plural, one {# open position} other {# open positions}}",
         values: { count },
       })
-    : i18n.t({ id: "company.meta.openPositions", message: "Open positions" });
+    : i18n._({ id: "company.meta.openPositions", message: "Open positions" });
   const description = company.description
-    ? i18n.t({
+    ? i18n._({
         id: "company.meta.descriptionWithInfo",
         message: "{countText} at {name}. {description}",
         values: { countText, name: company.name, description: company.description },
       })
-    : i18n.t({
+    : i18n._({
         id: "company.meta.descriptionBasic",
         message: "{countText} at {name}",
         values: { countText, name: company.name },
@@ -156,8 +156,8 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: i18n.t({ id: "breadcrumb.home", message: "Home" }), item: `${siteConfig.url}/${locale}` },
-      { "@type": "ListItem", position: 2, name: i18n.t({ id: "breadcrumb.explore", message: "Explore" }), item: `${siteConfig.url}/${locale}/explore` },
+      { "@type": "ListItem", position: 1, name: i18n._({ id: "breadcrumb.home", message: "Home" }), item: `${siteConfig.url}/${locale}` },
+      { "@type": "ListItem", position: 2, name: i18n._({ id: "breadcrumb.explore", message: "Explore" }), item: `${siteConfig.url}/${locale}/explore` },
       { "@type": "ListItem", position: 3, name: company.name },
     ],
   };

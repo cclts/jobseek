@@ -16,8 +16,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n.t({ id: "home.meta.title", message: "Find Relevant Roles Faster" });
-  const description = i18n.t({
+  const title = i18n._({ id: "home.meta.title", message: "Find Relevant Roles Faster" });
+  const description = i18n._({
     id: "home.meta.description",
     message: "Subscribe to updates from companies, track applications, and never miss new openings.",
   });
