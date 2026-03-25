@@ -1,0 +1,43 @@
+{
+  "actorSpecification": 1,
+  "name": "company-discovery-actor",
+  "title": "Company Discovery from Job Aggregators",
+  "description": "Discovers companies with open positions by scraping top job aggregator sites (Indeed, LinkedIn, Glassdoor, StepStone, Xing). Outputs company name, job board URL, and estimated open positions count.",
+  "version": "1.0",
+  "input": {
+    "title": "Input",
+    "description": "Configuration for company discovery.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "maxCompaniesPerSource": {
+        "type": "integer",
+        "title": "Max companies per source",
+        "description": "Maximum number of companies to discover from each job aggregator.",
+        "editor": "number",
+        "default": 400
+      },
+      "sources": {
+        "type": "array",
+        "title": "Sources",
+        "description": "Which job aggregators to scrape. Options: indeed, linkedin, glassdoor, stepstone, xing",
+        "editor": "json",
+        "default": ["indeed", "linkedin", "glassdoor", "stepstone", "xing"]
+      },
+      "searchQueries": {
+        "type": "array",
+        "title": "Search queries",
+        "description": "Custom search queries to use across all sources. Leave empty for default industry terms.",
+        "editor": "json",
+        "default": []
+      },
+      "useProxy": {
+        "type": "boolean",
+        "title": "Use proxy",
+        "description": "Whether to use Apify residential proxy for requests.",
+        "editor": "checkbox",
+        "default": true
+      }
+    }
+  }
+}
