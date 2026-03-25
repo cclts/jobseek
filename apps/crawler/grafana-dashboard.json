@@ -171,18 +171,18 @@
           "unit": "short"
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "http" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "browser" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] }
+          { "matcher": { "id": "byRegexp", "options": ".*initial.*" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }, { "id": "custom.lineWidth", "value": 3 }] },
+          { "matcher": { "id": "byRegexp", "options": ".*rescrape.*" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] }
         ]
       },
       "targets": [
         {
-          "expr": "crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", browser=\"false\"}",
-          "legendFormat": "http"
+          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"true\"})",
+          "legendFormat": "initial scrape"
         },
         {
-          "expr": "crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", browser=\"true\"}",
-          "legendFormat": "browser"
+          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"false\"})",
+          "legendFormat": "rescrape"
         }
       ]
     },
