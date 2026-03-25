@@ -1,5 +1,5 @@
 {
-  "annotations": { "list": [] },
+  "annotations": [],
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -12,7 +12,8 @@
       "fieldConfig": {
         "defaults": {
           "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "spanNulls": true },
-          "unit": "opm"
+          "unit": "short",
+          "decimals": 1
         },
         "overrides": [
           { "matcher": { "id": "byRegexp", "options": "failed|timed_out" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
@@ -37,29 +38,38 @@
           "min": 0, "max": 1
         }
       },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
       "targets": [
         {
-          "expr": "sum(rate(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"}[5m])) / sum(rate(crawler_tasks_total{app=\"jobseek\"}[5m]))",
+          "expr": "sum(rate(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"}[5m])) / clamp_min(sum(rate(crawler_tasks_total{app=\"jobseek\"}[5m])), 1e-10)",
           "legendFormat": "Overall"
         }
       ]
     },
     {
-      "title": "Total Tasks (cumulative)",
+      "title": "Total Tasks (since restart)",
       "type": "stat",
       "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
       "fieldConfig": {
         "defaults": { "unit": "short" },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "succeeded" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "failed" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+        ]
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] }
       },
       "targets": [
         {
-          "expr": "sum(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"}) by (kind)",
-          "legendFormat": "{{kind}} ok"
+          "expr": "sum(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"})",
+          "legendFormat": "succeeded"
         },
         {
-          "expr": "sum(crawler_tasks_total{app=\"jobseek\", status!=\"succeeded\"}) by (kind)",
-          "legendFormat": "{{kind}} fail"
+          "expr": "sum(crawler_tasks_total{app=\"jobseek\", status!=\"succeeded\"})",
+          "legendFormat": "failed"
         }
       ]
     },
@@ -80,15 +90,15 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m]))",
+          "expr": "histogram_quantile(0.50, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m])) by (le))",
           "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m]))",
+          "expr": "histogram_quantile(0.95, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m])) by (le))",
           "legendFormat": "p95"
         },
         {
-          "expr": "histogram_quantile(0.99, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m]))",
+          "expr": "histogram_quantile(0.99, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m])) by (le))",
           "legendFormat": "p99"
         }
       ]
@@ -110,48 +120,23 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m]))",
+          "expr": "histogram_quantile(0.50, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m])) by (le))",
           "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m]))",
+          "expr": "histogram_quantile(0.95, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m])) by (le))",
           "legendFormat": "p95"
         },
         {
-          "expr": "histogram_quantile(0.99, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m]))",
+          "expr": "histogram_quantile(0.99, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m])) by (le))",
           "legendFormat": "p99"
-        }
-      ]
-    },
-    {
-      "title": "Concurrency",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
-          "unit": "short"
-        },
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "Active" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "Queued" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
-        ]
-      },
-      "targets": [
-        {
-          "expr": "crawler_tasks_active{app=\"jobseek\"}",
-          "legendFormat": "Active"
-        },
-        {
-          "expr": "crawler_tasks_queued{app=\"jobseek\"}",
-          "legendFormat": "Queued"
         }
       ]
     },
     {
       "title": "Monitor Queue Depth",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
       "fieldConfig": {
         "defaults": {
           "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
@@ -176,7 +161,7 @@
     {
       "title": "Scraper Queue Depth",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
       "fieldConfig": {
         "defaults": {
           "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
@@ -199,9 +184,34 @@
       ]
     },
     {
+      "title": "Concurrency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Active" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Queued" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "crawler_tasks_active{app=\"jobseek\"}",
+          "legendFormat": "Active"
+        },
+        {
+          "expr": "crawler_tasks_queued{app=\"jobseek\"}",
+          "legendFormat": "Queued"
+        }
+      ]
+    },
+    {
       "title": "DB Pool",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
       "fieldConfig": {
         "defaults": {
           "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
