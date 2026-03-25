@@ -22,7 +22,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(crawler_tasks_total{app=\"jobseek\"}[5m])) by (kind, status) * 60",
+          "expr": "sum by (kind, status) (rate(crawler_tasks_total{app=\"jobseek\"}[$__rate_interval])) * 60",
           "legendFormat": "{{kind}} — {{status}}"
         }
       ]
@@ -43,8 +43,9 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"}[5m])) / clamp_min(sum(rate(crawler_tasks_total{app=\"jobseek\"}[5m])), 1e-10)",
-          "legendFormat": "Overall"
+          "expr": "sum(increase(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"}[$__range])) / clamp_min(sum(increase(crawler_tasks_total{app=\"jobseek\"}[$__range])), 1)",
+          "legendFormat": "Overall",
+          "instant": true
         }
       ]
     },
@@ -65,11 +66,13 @@
       "targets": [
         {
           "expr": "sum(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"})",
-          "legendFormat": "succeeded"
+          "legendFormat": "succeeded",
+          "instant": true
         },
         {
           "expr": "sum(crawler_tasks_total{app=\"jobseek\", status!=\"succeeded\"})",
-          "legendFormat": "failed"
+          "legendFormat": "failed",
+          "instant": true
         }
       ]
     },
@@ -90,15 +93,15 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[$__rate_interval])))",
           "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[$__rate_interval])))",
           "legendFormat": "p95"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[$__rate_interval])))",
           "legendFormat": "p99"
         }
       ]
@@ -120,15 +123,15 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[$__rate_interval])))",
           "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[$__rate_interval])))",
           "legendFormat": "p95"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[$__rate_interval])))",
           "legendFormat": "p99"
         }
       ]
