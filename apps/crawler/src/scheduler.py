@@ -13,7 +13,6 @@ import contextlib
 import signal
 import uuid
 
-import asyncpg
 import dotenv
 import structlog
 
@@ -22,8 +21,6 @@ dotenv.load_dotenv(".env")
 
 from src.batch import (  # noqa: E402
     WorkItem,
-    claim_monitor_work,
-    claim_scrape_work,
     dry_run_single_board,
     process_monitor_batch,
     process_scrape_batch,
@@ -32,15 +29,10 @@ from src.batch import (  # noqa: E402
 from src.config import settings  # noqa: E402
 from src.db import close_pool, create_pool  # noqa: E402
 from src.metrics import (  # noqa: E402
-    db_pool_idle,
-    db_pool_size,
     queue_depth,
     start_metrics_server,
     task_duration_seconds,
-    tasks_active,
-    tasks_queued,
     tasks_total,
-    tick_skip_total,
 )
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
@@ -98,6 +90,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Only process browser/Playwright work (skip HTTP tasks)",
     )
+    parser.add_argument(
+        "--r2-drain-only",
+        action="store_true",
+        help="Only run the R2 upload drain worker (no monitors or scrapers)",
+    )
     args = parser.parse_args()
     if args.dry_run and not args.board:
         parser.error("--dry-run requires --board")
@@ -105,6 +102,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--verbose requires --dry-run")
     if args.http_only and args.browser_only:
         parser.error("--http-only and --browser-only are mutually exclusive")
+    if args.r2_drain_only and (args.http_only or args.browser_only or args.once or args.board):
+        parser.error("--r2-drain-only cannot be combined with other mode flags")
     return args
 
 
@@ -402,12 +401,8 @@ async def run_continuous_loop(
         max_browser = 0
     if browser_only:
         max_concurrent = 0
-    max_interval = settings.crawler_poll_interval
-    idle_interval = 1.0
-
-    wp = WorkerPool(max_concurrent, max_browser=max_browser, db_pool=pool)
     log.info(
-        "pool.starting",
+        "scheduler.starting",
         max_concurrent=max_concurrent,
         max_browser=max_browser,
         monitor=monitor,
@@ -416,124 +411,94 @@ async def run_continuous_loop(
         browser_only=browser_only,
     )
 
-    while not shutdown_event.is_set():
-        work_found = False
-        monitors_claimed = 0
-        scrapes_claimed = 0
+    # Start background R2 drain worker unless running in split mode
+    # (dedicated --r2-drain-only container handles it separately)
+    from src.r2_worker import drain_remaining, run_r2_drain_loop
 
-        # Skip claim queries when all slots are full — nothing can be submitted
-        if wp.http_free == 0 and wp.browser_free == 0:
-            tick_skip_total.labels(reason="slots_full").inc()
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
-            continue
+    r2_drain_task = None
+    if not http_only and not browser_only:
 
-        # Skip claim queries when no DB connections are idle
-        if pool.get_idle_size() == 0:
-            tick_skip_total.labels(reason="db_idle").inc()
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
-            continue
+        async def _r2_drain_supervised():
+            while not shutdown_event.is_set():
+                try:
+                    await run_r2_drain_loop(pool, shutdown_event)
+                except Exception:
+                    log.exception("r2_drain.crashed")
+                    if not shutdown_event.is_set():
+                        await asyncio.sleep(5)
 
-        try:
-            skip = []  # no domain exclusion — semaphore controls concurrency
+        r2_drain_task = asyncio.create_task(_r2_drain_supervised())
 
-            # Phase 1: HTTP monitors (priority)
-            if not browser_only:
-                budget = wp.http_free
-                if monitor and budget > 0:
-                    items = await claim_monitor_work(pool, http, budget, worker_id, skip)
-                    monitors_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
+    # Start monitor pipeline (producer-consumer, separate from WorkerPool)
+    from src.batch import run_monitor_pipeline
 
-            # Phase 2: browser monitors
-            if not http_only:
-                budget = wp.browser_free
-                if monitor and budget > 0:
-                    items = await claim_monitor_work(
+    monitor_tasks = []
+    if monitor and not browser_only:
+
+        async def _http_monitor_supervised():
+            while not shutdown_event.is_set():
+                try:
+                    await run_monitor_pipeline(
                         pool,
                         http,
-                        budget,
-                        worker_id,
-                        skip,
-                        browser=True,
+                        shutdown_event,
+                        num_workers=max_concurrent,
+                        scrape=scrape,
+                        worker_id=worker_id,
+                        browser=False,
                     )
-                    monitors_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
+                except Exception:
+                    log.exception("monitor_pipeline.http.crashed")
+                    if not shutdown_event.is_set():
+                        await asyncio.sleep(5)
 
-            # Phase 3: HTTP scrapes (fill remaining)
-            if not browser_only:
-                budget = wp.http_free
-                if scrape and budget > 0:
-                    items = await claim_scrape_work(pool, http, budget, worker_id, skip)
-                    scrapes_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
+        monitor_tasks.append(asyncio.create_task(_http_monitor_supervised()))
 
-            # Phase 4: browser scrapes (fill remaining)
-            if not http_only:
-                budget = wp.browser_free
-                if scrape and budget > 0:
-                    items = await claim_scrape_work(
+    if monitor and not http_only:
+
+        async def _browser_monitor_supervised():
+            while not shutdown_event.is_set():
+                try:
+                    await run_monitor_pipeline(
                         pool,
                         http,
-                        budget,
-                        worker_id,
-                        skip,
+                        shutdown_event,
+                        num_workers=max(max_browser, 1),
+                        scrape=scrape,
+                        worker_id=worker_id,
                         browser=True,
                     )
-                    scrapes_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
-        except (TimeoutError, OSError, asyncpg.PostgresError) as exc:
-            log.warning("pool.claim_error", error=str(exc))
-            # Back off and retry on the next tick
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=5.0)
-            continue
+                except Exception:
+                    log.exception("monitor_pipeline.browser.crashed")
+                    if not shutdown_event.is_set():
+                        await asyncio.sleep(5)
 
-        tasks_active.set(wp.active_count)
-        tasks_queued.set(wp.queued_count)
-        db_pool_size.set(pool.get_size())
-        db_pool_idle.set(pool.get_idle_size())
+        monitor_tasks.append(asyncio.create_task(_browser_monitor_supervised()))
 
-        # Update queue depth from DB (throttled — only when idle or every ~30s)
-        if not work_found or wp.succeeded % 30 == 0:
-            await _update_queue_depth(pool)
+    # Wait for shutdown — pipelines handle all work
+    await shutdown_event.wait()
 
-        if work_found or wp.active_count > 0:
-            log.info(
-                "pool.tick",
-                monitors_claimed=monitors_claimed,
-                scrapes_claimed=scrapes_claimed,
-                active=wp.active_count,
-                browser_active=wp.browser_active,
-                queued=wp.queued_count,
-                db_idle=pool.get_idle_size(),
-                succeeded=wp.succeeded,
-                failed=wp.failed,
-            )
-            idle_interval = 1.0
-        else:
-            idle_interval = min(idle_interval * 2, max_interval)
+    # Pipelines observe shutdown_event and drain naturally
+    # Give them time to finish, then cancel if stuck
+    try:
+        await asyncio.wait_for(
+            asyncio.gather(*monitor_tasks, return_exceptions=True),
+            timeout=30.0,
+        )
+    except TimeoutError:
+        log.warning("scheduler.pipeline_drain_timeout")
+        for t in monitor_tasks:
+            t.cancel()
+        await asyncio.gather(*monitor_tasks, return_exceptions=True)
 
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(shutdown_event.wait(), timeout=idle_interval)
+    # Stop R2 drain loop and flush remaining pending uploads
+    if r2_drain_task is not None:
+        r2_drain_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await r2_drain_task
+        await drain_remaining(pool)
 
-    log.info("pool.draining", active=wp.active_count, queued=wp.queued_count)
-    await wp.drain()
-    log.info(
-        "pool.stopped",
-        total_submitted=wp.total_submitted,
-        succeeded=wp.succeeded,
-        failed=wp.failed,
-    )
+    log.info("scheduler.stopped")
 
 
 # ── One-shot mode ────────────────────────────────────────────────────
@@ -646,6 +611,19 @@ async def run() -> None:
             await run_single_board(pool, http, args.board, force_rescrape=args.force_rescrape)
         elif args.once:
             await run_once(pool, http, monitor=do_monitor, scrape=do_scrape)
+        elif args.r2_drain_only:
+            from src.r2_worker import drain_remaining, run_r2_drain_loop
+
+            shutdown_event = asyncio.Event()
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGTERM, signal.SIGINT):
+                loop.add_signal_handler(sig, lambda: shutdown_event.set())
+
+            log.info("scheduler.r2_drain_only")
+            try:
+                await run_r2_drain_loop(pool, shutdown_event)
+            finally:
+                await drain_remaining(pool)
         else:
             shutdown_event = asyncio.Event()
             loop = asyncio.get_running_loop()

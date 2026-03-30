@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from src.batch import WorkItem
 from src.scheduler import WorkerPool, run_continuous_loop
@@ -33,6 +33,13 @@ def _mock_pool():
     pool = MagicMock()
     pool.get_size.return_value = 10
     pool.get_idle_size.return_value = 10
+    # Default fetch/fetchval return empty for R2 drain queries
+    pool.fetch = AsyncMock(return_value=[])
+    pool.fetchval = AsyncMock(return_value=0)
+    conn = AsyncMock()
+    conn.fetch = AsyncMock(return_value=[])
+    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
+    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
     return pool
 
 
@@ -322,192 +329,10 @@ class TestWorkerPool:
 
 
 class TestRunContinuousLoop:
-    @patch("src.scheduler.claim_scrape_work", new_callable=AsyncMock)
-    @patch("src.scheduler.claim_monitor_work", new_callable=AsyncMock)
-    async def test_monitor_priority(self, mock_monitors, mock_scrapes):
-        """Monitors are claimed before scrapes."""
-        call_order = []
-
-        async def track_monitors(*a, **kw):
-            call_order.append("monitor")
-            return [_work_item(domain="m.com", kind="monitor")]
-
-        async def track_scrapes(*a, **kw):
-            call_order.append("scrape")
-            return []
-
-        mock_monitors.side_effect = track_monitors
-        mock_scrapes.side_effect = track_scrapes
-
+    async def test_shutdown_stops_cleanly(self):
+        """Immediate shutdown returns without error."""
         shutdown = asyncio.Event()
         pool = _mock_pool()
         http = AsyncMock()
-
-        # Run one iteration then shutdown
-        iteration = 0
-
-        original_side_effect = mock_monitors.side_effect
-
-        async def monitors_then_stop(*a, **kw):
-            nonlocal iteration
-            iteration += 1
-            if iteration > 1:
-                shutdown.set()
-                return []
-            return await original_side_effect(*a, **kw)
-
-        mock_monitors.side_effect = monitors_then_stop
-
+        shutdown.set()
         await run_continuous_loop(pool, http, shutdown, max_concurrent=5, worker_id="t")
-
-        assert call_order[0] == "monitor"
-
-    @patch("src.scheduler.claim_scrape_work", new_callable=AsyncMock)
-    @patch("src.scheduler.claim_monitor_work", new_callable=AsyncMock)
-    async def test_pool_full_skips_scrapes(self, mock_monitors, mock_scrapes):
-        """When monitors fill all slots, scrapes are not claimed."""
-        shutdown = asyncio.Event()
-        pool = _mock_pool()
-        http = AsyncMock()
-        iteration = 0
-
-        async def fill_pool(*a, **kw):
-            nonlocal iteration
-            iteration += 1
-            if iteration > 1:
-                shutdown.set()
-                return []
-            # Return items that fill all 2 slots
-            return [
-                _slow_work_item(domain="m1.com", delay=0.5),
-                _slow_work_item(domain="m2.com", delay=0.5),
-            ]
-
-        mock_monitors.side_effect = fill_pool
-        mock_scrapes.return_value = []
-
-        await run_continuous_loop(pool, http, shutdown, max_concurrent=2, worker_id="t")
-
-        # At least monitors were called
-        assert mock_monitors.call_count >= 1
-
-    @patch("src.scheduler.claim_scrape_work", new_callable=AsyncMock)
-    @patch("src.scheduler.claim_monitor_work", new_callable=AsyncMock)
-    async def test_scrapes_fill_remaining(self, mock_monitors, mock_scrapes):
-        """Scrapes fill slots left after monitors."""
-        shutdown = asyncio.Event()
-        pool = _mock_pool()
-        http = AsyncMock()
-        iteration = 0
-
-        async def one_monitor(*a, **kw):
-            nonlocal iteration
-            iteration += 1
-            if iteration > 1:
-                shutdown.set()
-                return []
-            return [_work_item(domain="m.com", kind="monitor")]
-
-        mock_monitors.side_effect = one_monitor
-        mock_scrapes.return_value = [_work_item(domain="s.com", kind="scrape")]
-
-        await run_continuous_loop(pool, http, shutdown, max_concurrent=5, worker_id="t")
-
-        # Scrapes should have been called at least once
-        assert mock_scrapes.call_count >= 1
-
-    @patch("src.scheduler.claim_scrape_work", new_callable=AsyncMock)
-    @patch("src.scheduler.claim_monitor_work", new_callable=AsyncMock)
-    async def test_idle_backoff(self, mock_monitors, mock_scrapes):
-        """When no work is found, loop backs off (doesn't busy-wait)."""
-        shutdown = asyncio.Event()
-        pool = _mock_pool()
-        http = AsyncMock()
-        iteration = 0
-
-        async def no_work(*a, **kw):
-            nonlocal iteration
-            iteration += 1
-            if iteration >= 3:
-                shutdown.set()
-            return []
-
-        mock_monitors.side_effect = no_work
-        mock_scrapes.return_value = []
-
-        await run_continuous_loop(pool, http, shutdown, max_concurrent=5, worker_id="t")
-
-        # Loop ran at least a few iterations before shutdown
-        assert iteration >= 3
-
-    @patch("src.scheduler.claim_scrape_work", new_callable=AsyncMock)
-    @patch("src.scheduler.claim_monitor_work", new_callable=AsyncMock)
-    async def test_shutdown_drains(self, mock_monitors, mock_scrapes):
-        """Shutdown signal causes drain of in-flight tasks."""
-        shutdown = asyncio.Event()
-        pool = _mock_pool()
-        http = AsyncMock()
-        completed = []
-
-        async def slow_run():
-            await asyncio.sleep(0.05)
-            completed.append(True)
-            return (True, 0.05)
-
-        iteration = 0
-
-        async def submit_then_stop(*a, **kw):
-            nonlocal iteration
-            iteration += 1
-            if iteration == 1:
-                item = WorkItem(domain="d.com", kind="monitor", run=slow_run)
-                return [item]
-            shutdown.set()
-            return []
-
-        mock_monitors.side_effect = submit_then_stop
-        mock_scrapes.return_value = []
-
-        await run_continuous_loop(pool, http, shutdown, max_concurrent=5, worker_id="t")
-
-        # The slow task should have completed during drain
-        assert len(completed) == 1
-
-    @patch("src.scheduler.claim_scrape_work", new_callable=AsyncMock)
-    @patch("src.scheduler.claim_monitor_work", new_callable=AsyncMock)
-    async def test_queued_items_process_without_reclaim(self, mock_monitors, mock_scrapes):
-        """Items queued for the same domain process without a new claim tick."""
-        shutdown = asyncio.Event()
-        pool = _mock_pool()
-        http = AsyncMock()
-        processed = []
-
-        async def make_run(label):
-            async def _run():
-                processed.append(label)
-                return (True, 0.01)
-
-            return _run
-
-        iteration = 0
-
-        async def claim_batch(*a, **kw):
-            nonlocal iteration
-            iteration += 1
-            if iteration == 1:
-                # Return 3 items for the same domain — 1 runs, 2 queued
-                items = []
-                for i in range(3):
-                    run_fn = await make_run(f"m-{i}")
-                    items.append(WorkItem(domain="same.com", kind="monitor", run=run_fn))
-                return items
-            shutdown.set()
-            return []
-
-        mock_monitors.side_effect = claim_batch
-        mock_scrapes.return_value = []
-
-        await run_continuous_loop(pool, http, shutdown, max_concurrent=5, worker_id="t")
-
-        # All 3 should have processed, even though only 1 claim tick returned them
-        assert len(processed) == 3

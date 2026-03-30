@@ -25,10 +25,16 @@ class Settings(BaseSettings):
     crawler_poll_interval: int = 15
     crawler_max_concurrent: int = 20
     crawler_max_browser: int = 3  # separate cap for browser (Playwright) work
-    crawler_db_pool_max: int = 10  # should be >= half of crawler_max_concurrent
+    crawler_db_pool_max: int = 10
+    crawler_db_writers: int = 1  # number of concurrent pipeline DB writers
     metrics_port: int = 9091
-    r2_max_connections: int = 50
-    r2_upload_concurrency: int = 5  # per-board R2 upload semaphore
+    r2_max_connections: int = 60  # also controls number of drain worker consumers
+    r2_drain_producers: int = 1  # number of concurrent DB-fetch producers
+    r2_drain_writers: int = 1  # number of concurrent DB-write workers
+    r2_drain_batch_size: int = 200
+    r2_drain_max_retries: int = 5
+    r2_drain_shutdown_timeout: float = 30.0
+    r2_queue_max: int = 50000  # skip re-upload staging above this threshold
 
     apify_token: str = ""
     anthropic_api_key: str = ""
