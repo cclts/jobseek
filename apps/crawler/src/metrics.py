@@ -36,6 +36,24 @@ monitor_jobs_discovered = Counter(
     ["profile", "action"],
 )
 
+monitor_url_filtered_total = Counter(
+    "crawler_monitor_url_filtered_total",
+    "URLs dropped by monitor pre-insert sanity checks",
+    ["reason"],
+)
+
+monitor_dedup_total = Counter(
+    "crawler_monitor_dedup_total",
+    "Insert attempts silently skipped by ON CONFLICT (source_url) DO NOTHING",
+    ["path"],
+)
+
+api_sniffer_fallback_failed_total = Counter(
+    "crawler_api_sniffer_fallback_failed_total",
+    "api_sniffer replay paths that ended with no data (raised ApiSnifferFallbackError)",
+    ["reason"],
+)
+
 monitor_idle_seconds = Counter(
     "crawler_monitor_idle_seconds_total",
     "Time workers spent idle (no work in queue)",
@@ -222,6 +240,41 @@ worker_heartbeat_ts = Gauge(
     ["worker_id"],
 )
 
+# ── Browser metrics ─────────────────────────────────────────────────
+
+browser_navigate_fallback_total = Counter(
+    "crawler_browser_navigate_fallback_total",
+    # Outcomes: success = fallback recovered the navigation; failed = fallback
+    # also timed out or errored; disabled = board opted out via
+    # wait_fallback=None; match = fallback strategy equals primary so no
+    # retry was attempted.
+    "Browser navigate() fallback retries after primary wait-strategy timeout",
+    ["primary", "fallback", "outcome"],
+)
+
+
+# Build info — emitted once at startup so Grafana can confirm which
+# ``apps/crawler/VERSION`` each container is running without SSH-ing in.
+# Use via: ``crawler_build_info{version="0.8.13"} 1``.
+build_info = Gauge(
+    "crawler_build_info",
+    "Crawler build info (always 1; inspect the ``version`` label).",
+    ["version"],
+)
+
+
+def _read_version() -> str:
+    """Read ``apps/crawler/VERSION`` relative to this module, or "unknown"."""
+    import pathlib
+
+    # src/metrics.py → src/../VERSION
+    version_file = pathlib.Path(__file__).resolve().parent.parent / "VERSION"
+    try:
+        return version_file.read_text().strip() or "unknown"
+    except OSError:
+        return "unknown"
+
 
 def start_metrics_server(port: int) -> None:
+    build_info.labels(version=_read_version()).set(1)
     start_http_server(port)
