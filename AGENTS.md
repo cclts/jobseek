@@ -53,6 +53,7 @@ uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Red
 uv run crawler board <slug>       # Process single board (debug)
 uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
 uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
+uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (see docs/13-seo-and-indexnow.md)
 ```
 
 Web app (from `apps/web/`):
@@ -142,6 +143,12 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 ### Web App Integration
 
 `TypesenseSearchProvider` replaces `PostgresSearchProvider` (one-shot cutover). Graceful degradation: all errors return empty results, Postgres fallback for watchlist write functions. No Redis cache on main search (Typesense is fast enough); cached for unfiltered homepage (60s) and popular watchlists (120s).
+
+## SEO and IndexNow
+
+Company pages server-render stable facts + JSON-LD (posting list stays client-rendered). IndexNow notifies Bing/Yandex/Seznam/Naver/Yep on content changes; Google is out of scope. Crawler side runs a content-hash diff per (company, locale); web side fires from watchlist server actions via `after()`.
+
+See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md).
 
 ## Git Workflow
 
