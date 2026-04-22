@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import shutil
+import subprocess
 import tempfile
 import uuid
 from collections.abc import AsyncIterator
@@ -128,6 +130,104 @@ def _resolve_placeholders(cookies: list[dict]) -> list[dict]:
     return resolved
 
 
+def _x_server_alive(display: str) -> bool:
+    """Probe the X server by running ``xdpyinfo``.
+
+    Returns ``False`` on timeout, missing binary, or non-zero exit — i.e.
+    any state that would cause Playwright's headful launch to crash with
+    "XServer running" (#2431). A ``True`` result means an X server is
+    actually responding to protocol requests on *display*, not merely that
+    ``DISPLAY`` is set in the environment.
+
+    ``xdpyinfo`` ships in the ``x11-utils`` Debian package (installed in
+    ``apps/crawler/Dockerfile`` — see the full stage apt line). On dev
+    machines without the binary, ``FileNotFoundError`` falls through to
+    ``False`` and the caller coerces to headless just like in prod.
+
+    The 2s timeout caps worst-case latency: a healthy ``xdpyinfo`` returns
+    in ~20ms; the timeout fires only when the X server is hung. Called
+    once per browser launch — if that becomes hot, cache the result.
+    """
+    try:
+        result = subprocess.run(
+            ["xdpyinfo", "-display", display],
+            capture_output=True,
+            timeout=2,
+            check=False,
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+
+
+def _resolve_headless(requested_headless: bool) -> tuple[bool, bool]:
+    """Decide the effective headless mode given the runtime display state.
+
+    Boards that need to pass Akamai / PerimeterX / DataDome bot managers set
+    ``"headless": false`` in their monitor/scraper config. The crawler's
+    ``browser-1`` container ships an xvfb entrypoint (``/usr/local/bin/with-xvfb``
+    in ``apps/crawler/Dockerfile``) that starts ``Xvfb :99``, waits for the
+    server to respond to ``xdpyinfo``, and exports ``DISPLAY=:99`` before
+    launching — so headful Chromium has an X server to draw into.
+
+    If that entrypoint is missing, bypassed, or Xvfb dies *after* the
+    entrypoint handed off to the crawler (e.g. OOM-killed, segfault mid-run),
+    Playwright crashes with:
+
+        "launched a headed browser without having a XServer running. Set
+         either headless: true or use xvfb-run <your-playwright-app>"
+
+    Historically this produced hourly crashes per affected board (#2431).
+    Instead of hard-failing, fall back to headless mode and log loudly — the
+    Akamai bypass is best-effort and a degraded run (possibly blocked by the
+    bot manager) is strictly better than a crash that blocks the worker slot
+    every cycle.
+
+    Probing the X server via ``xdpyinfo`` (not just ``$DISPLAY``-is-set) is
+    what distinguishes this from the original #2431 fix: a dead Xvfb still
+    leaves ``DISPLAY`` set in the child environment, so a bare env check
+    would wave the launch through to the same crash it was meant to prevent.
+
+    Returns ``(effective_headless, coerced)`` where ``coerced`` is True only
+    when we flipped the caller's explicit ``headless=False`` to True.
+    """
+    if requested_headless:
+        return True, False
+    display = os.environ.get("DISPLAY")
+    if not display:
+        log.warning(
+            "browser.headless_coerced",
+            reason="no_display",
+            detail=(
+                "headless=False requested but DISPLAY is unset — falling "
+                "back to headless=True with --headless=new. Expected in "
+                "dev; in prod this means the xvfb entrypoint (with-xvfb) "
+                "did not run. Rebuild crawler-full and ensure docker run "
+                "does not override ENTRYPOINT."
+            ),
+        )
+        metrics.browser_headless_coerced_total.labels(reason="no_display").inc()
+        return True, True
+    if not _x_server_alive(display):
+        log.warning(
+            "browser.headless_coerced",
+            reason="display_unresponsive",
+            display=display,
+            detail=(
+                "headless=False requested and DISPLAY is set, but "
+                "xdpyinfo could not talk to the X server (timed out, "
+                "non-zero exit, or xdpyinfo missing). Falling back to "
+                "headless=True with --headless=new rather than letting "
+                "Playwright crash on launch. In prod this usually means "
+                "Xvfb died after with-xvfb handed off — check the "
+                "browser-1 container logs for Xvfb exit traces."
+            ),
+        )
+        metrics.browser_headless_coerced_total.labels(reason="display_unresponsive").inc()
+        return True, True
+    return False, False
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -149,6 +249,13 @@ async def open_page(
     Config keys consumed: ``user_agent``, ``headless`` (default ``True``),
     ``persistent_context``, ``channel``, ``viewport``, ``locale``.
 
+    ``headless: false`` requires an X server at runtime (DISPLAY env var
+    set). In production the browser worker's Docker entrypoint
+    (``/usr/local/bin/with-xvfb``) starts Xvfb :99 and exports DISPLAY
+    before launching. If DISPLAY is unset at runtime we coerce back to
+    ``headless=True`` with ``--headless=new`` and log a warning — see
+    :func:`_resolve_headless` for rationale (#2431).
+
     When ``use_proxy`` is True, the browser launches through the active
     proxy provider (see :mod:`src.shared.proxy`).
 
@@ -161,7 +268,16 @@ async def open_page(
     Playwright's bundled Chromium).
     """
     config = config or {}
-    headless = config.get("headless", True)
+    requested_headless = bool(config.get("headless", True))
+    # Boards that need Akamai/PerimeterX bypass set ``headless: false`` and
+    # rely on the ``browser-1`` container's xvfb entrypoint to provide an
+    # X server. If DISPLAY is missing at runtime (entrypoint bypassed,
+    # image predates the entrypoint), a headful launch crashes with
+    # "launched a headed browser without having a XServer running".
+    # Coerce to headless + ``--headless=new`` so the run degrades to
+    # bot-manager-blocked rather than blocking the worker slot every
+    # cycle. See _resolve_headless for the full rationale (#2431).
+    headless, headless_coerced = _resolve_headless(requested_headless)
     warmup_url = config.get("warmup_url")
     cookies = config.get("cookies")
     persistent = bool(config.get("persistent_context"))
@@ -183,10 +299,13 @@ async def open_page(
         user_agent = DEFAULT_USER_AGENT
 
     extra_args: list[str] = []
-    if headless and config.get("stealth"):
+    if headless and (config.get("stealth") or headless_coerced):
         # Chromium's new headless mode (--headless=new) is less detectable
         # by anti-bot systems (Cloudflare Turnstile etc.). Enable via
-        # stealth: true.
+        # stealth: true, or automatically when we coerced a headful
+        # request into headless (#2431 — Akamai-gated boards fall back
+        # here when xvfb is missing, and --headless=new gives them the
+        # best chance of not being blocked outright).
         extra_args.append("--headless=new")
     if config.get("disable_http2"):
         extra_args.append("--disable-http2")
