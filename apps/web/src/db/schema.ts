@@ -814,3 +814,48 @@ export const watchlistCompany = pgTable(
   ],
 );
 
+// ── Murmur per-claim KV (named-config state, jobseek#2757) ───────────
+
+export const murmurClaimKv = pgTable(
+  "murmur_claim_kv",
+  {
+    claimToken: text("claim_token").notNull(),
+    name: text("name").notNull(),
+    value: jsonb("value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.claimToken, table.name] }),
+    index("murmur_claim_kv_token_idx").on(table.claimToken),
+  ],
+);
+
+// ── Murmur webhook idempotency ledger (jobseek#2763) ─────────────────
+//
+// One row per accepted Murmur run. `runId` is the PRIMARY KEY — that is
+// the UNIQUE constraint the accept handler relies on per Murmur
+// DESIGN.md §4.2. `bodySha256` lets the handler distinguish "same body
+// re-fire" (idempotent success) from "different body re-fire"
+// (operator anomaly: warn and discard).
+export const murmurAcceptLog = pgTable(
+  "murmur_accept_log",
+  {
+    runId: text("run_id").primaryKey(),
+    bodySha256: text("body_sha256").notNull(),
+    appliedAt: timestamp("applied_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    companyId: uuid("company_id").references(() => company.id, {
+      onDelete: "set null",
+    }),
+    boardCount: integer("board_count").notNull().default(0),
+    target: text("target").notNull(),
+  },
+  (table) => [index("murmur_accept_log_applied_idx").on(table.appliedAt)],
+);
+

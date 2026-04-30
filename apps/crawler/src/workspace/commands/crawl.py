@@ -7,7 +7,6 @@ import json
 import math
 import random
 import re
-import time
 
 import click
 
@@ -328,21 +327,23 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int,
 
     ws, board = _resolve_board(slug, board_alias)
 
-    async def _run():
-        from playwright.async_api import async_playwright
+    # Build the immutable lib snapshot and delegate to the importable async fn.
+    from src.workspace.lib import BoardConfigState, WsProbeFailed
+    from src.workspace.lib import probe_monitor as _lib_probe_monitor
 
-        from src.core.monitors import probe_all_monitors
-        from src.shared.http import create_http_client
+    state = BoardConfigState(
+        board_url=board.url,
+        alias=board.alias,
+        slug=slug,
+    )
+    try:
+        lib_result = asyncio.run(_lib_probe_monitor(state, current_jobs))
+    except WsProbeFailed as exc:
+        out.die(str(exc))
+        return  # pragma: no cover — out.die exits
 
-        http = create_http_client()
-        try:
-            async with async_playwright() as pw:
-                results = await probe_all_monitors(board.url, http, pw=pw)
-            return results
-        finally:
-            await _shutdown_http(http)
-
-    results = asyncio.run(_run())
+    # Re-derive the legacy tuple list so existing CLI helpers stay unchanged.
+    results = [(e.name, e.metadata, e.comment) for e in lib_result.entries]
 
     # Save probe artifact
     from src.workspace.artifacts import probe_run_dir, save_probe
@@ -484,20 +485,27 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
 
     out.info("probe", f"Probing {len(target_urls)} sample URLs...")
 
-    async def _run():
-        from playwright.async_api import async_playwright
+    # Build the immutable lib snapshot and delegate to the importable async fn.
+    from src.workspace.lib import BoardConfigState, WsConfigMissing, WsProbeFailed
+    from src.workspace.lib import probe_scraper as _lib_probe_scraper
 
-        from src.core.scrapers import probe_scrapers
-        from src.shared.http import create_http_client
+    state = BoardConfigState(
+        board_url=board.url,
+        alias=board.alias,
+        slug=slug,
+        sample_urls=tuple(target_urls),
+    )
+    try:
+        lib_result = asyncio.run(_lib_probe_scraper(state, sample_urls=target_urls))
+    except WsConfigMissing as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
+    except WsProbeFailed as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
 
-        http = create_http_client()
-        try:
-            async with async_playwright() as pw:
-                return await probe_scrapers(target_urls, http, pw=pw)
-        finally:
-            await _shutdown_http(http)
-
-    results, spa_suspect = asyncio.run(_run())
+    results = [(e.name, e.metadata, e.comment) for e in lib_result.entries]
+    spa_suspect = lib_result.spa_suspect
 
     # Save artifacts
     from src.workspace.artifacts import save_probe, scraper_probe_run_dir
@@ -1057,30 +1065,29 @@ def select_monitor(
     # Generate or use provided config name
     name = config_name or _auto_config_name(board, type_)
 
-    # Create named config entry with cost estimate
+    # Cost estimate + auto-scraper resolution (CLI-only metadata).
     mon_est = _estimate_monitor_cost(type_, 200, clean_config)
     auto = auto_scraper_type(type_, clean_config)
     init_load = 0.0 if auto else _estimate_initial_load(200)
-    cfg_entry: dict = {
-        "monitor_type": type_,
-        "monitor_config": clean_config,
-        "status": "selected",
-        "cost": {
-            "monitor_per_cycle": round(mon_est, 2),
-            "initial_load": round(init_load, 2),
-        },
+
+    # Persist the canonical {monitor_type, monitor_config} via the lib
+    # (which is the same code path J5's HTTP route will use). The lib
+    # adapter merges into ``board.configs[name]``; CLI-only fields below
+    # are then layered on top.
+    from src.workspace.board_claim_kv import BoardBackedClaimKV
+    from src.workspace.lib import select_monitor as _lib_select_monitor
+
+    asyncio.run(_lib_select_monitor(BoardBackedClaimKV(board), type_, name, clean_config))
+
+    # Layer in CLI-only metadata (status, cost, auto-scraper).
+    cfg_entry = board.configs[name]
+    cfg_entry["status"] = "selected"
+    cfg_entry["cost"] = {
+        "monitor_per_cycle": round(mon_est, 2),
+        "initial_load": round(init_load, 2),
     }
-    # Auto-configure scraper when the monitor determines it
     if auto:
         cfg_entry["scraper_type"] = auto[0]
-    # Preserve scraper settings when re-selecting a monitor with the same name
-    if name in board.configs:
-        prev = board.configs[name]
-        for key in ("scraper_type", "scraper_config"):
-            if key in prev and key not in cfg_entry:
-                cfg_entry[key] = prev[key]
-    board.configs[name] = cfg_entry
-    board.active_config = name
 
     action_log.append_to_list(
         board.log,
@@ -1190,34 +1197,36 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
     run_dir = monitor_run_dir(slug, board.alias)
     log_events = capture_structlog()
 
-    async def _run():
-        from playwright.async_api import async_playwright
+    # Build the immutable lib snapshot and delegate to the importable async fn.
+    from src.workspace.lib import BoardConfigState, WsConfigMissing, WsMonitorRunFailed
+    from src.workspace.lib import run_monitor as _lib_run_monitor
 
-        from src.core.monitor import monitor_one
-        from src.shared.http import create_logging_http_client
-
-        ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
-        use_proxy = bool((mon_config or {}).get("proxy"))
-        http, http_log = create_logging_http_client(verify=ssl_verify, use_proxy=use_proxy)
-        try:
-            async with async_playwright() as pw:
-                start = time.monotonic()
-                result = await monitor_one(
-                    board.url,
-                    mon_type,
-                    mon_config or None,
-                    http,
-                    artifact_dir=run_dir,
-                    pw=pw,
-                )
-                elapsed = time.monotonic() - start
-            return result, elapsed, http_log
-        finally:
-            await _shutdown_http(http)
+    state = BoardConfigState(
+        board_url=board.url,
+        alias=board.alias,
+        slug=slug,
+        monitor_type=mon_type,
+        monitor_config=mon_config or {},
+        ssl_verify=(board.monitor_config or {}).get("ssl_verify", True),
+        use_proxy=bool((mon_config or {}).get("proxy")),
+    )
 
     try:
-        result, elapsed, http_log = asyncio.run(_run())
-    except Exception as exc:
+        lib_result = asyncio.run(
+            _lib_run_monitor(
+                state,
+                config_name=config_name,
+                artifact_dir=run_dir,
+                log_events=log_events,
+            )
+        )
+        result = lib_result  # downstream code reads .urls / .jobs_by_url / .filtered_count
+        elapsed = lib_result.elapsed_seconds
+        http_log = lib_result.http_log
+    except WsConfigMissing as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
+    except WsMonitorRunFailed as exc:
         detail = str(exc).strip() or exc.__class__.__name__
         out.error("monitor", f"Run failed: {detail}")
         out.plain("monitor", f"Monitor: {mon_type} | Board: {board.url}")
@@ -1599,8 +1608,15 @@ def select_scraper(
 
     config = json.loads(config_json) if config_json else {}
 
-    board.scraper_type = type_
-    board.scraper_config = config
+    # Persist scraper_type / scraper_config under the active named slot
+    # via the lib (canonical KV path). If no active config exists, the
+    # legacy Board.__setattr__ behavior auto-creates one — we mirror
+    # that by falling back to active_config or the type as the slot name.
+    from src.workspace.board_claim_kv import BoardBackedClaimKV
+    from src.workspace.lib import select_scraper as _lib_select_scraper
+
+    name = board.active_config or type_
+    asyncio.run(_lib_select_scraper(BoardBackedClaimKV(board), type_, name, config))
 
     save_board(slug, board)
 
@@ -1668,45 +1684,42 @@ def run_scraper(
     run_dir = scraper_run_dir(slug, board.alias)
     log_events = capture_structlog()
 
-    async def _run():
-        from httpx import HTTPStatusError
-        from playwright.async_api import async_playwright
+    # Build the immutable lib snapshot and delegate to the importable async fn.
+    from src.workspace.lib import BoardConfigState, WsConfigMissing, WsScraperRunFailed
+    from src.workspace.lib import run_scraper as _lib_run_scraper
 
-        from src.core.scrape import scrape_one
-        from src.processing.scrape import _apply_defaults
-        from src.shared.http import create_logging_http_client
+    state = BoardConfigState(
+        board_url=board.url,
+        alias=board.alias,
+        slug=slug,
+        scraper_type=scr_type,
+        scraper_config=scr_config or {},
+        sample_urls=tuple(target_urls),
+        ssl_verify=(board.monitor_config or {}).get("ssl_verify", True),
+        use_proxy=bool((scr_config or {}).get("proxy")),
+    )
+    try:
+        lib_result = asyncio.run(
+            _lib_run_scraper(
+                state,
+                config_name=config_name,
+                sample_urls=target_urls,
+                artifact_dir=run_dir,
+                log_events=log_events,
+            )
+        )
+    except WsConfigMissing as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
+    except WsScraperRunFailed as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
 
-        ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
-        use_proxy = bool((scr_config or {}).get("proxy"))
-        http, http_log = create_logging_http_client(verify=ssl_verify, use_proxy=use_proxy)
-        results = []
-        skipped: list[tuple[str, str]] = []
-        try:
-            async with async_playwright() as pw:
-                for i, url in enumerate(target_urls):
-                    job_id = f"sample-{i}"
-                    start = time.monotonic()
-                    try:
-                        content = await scrape_one(
-                            url,
-                            scr_type,
-                            scr_config or None,
-                            http,
-                            artifact_dir=run_dir,
-                            job_id=job_id,
-                            pw=pw,
-                        )
-                    except HTTPStatusError as exc:
-                        skipped.append((url, str(exc.response.status_code)))
-                        continue
-                    content = _apply_defaults(content, scr_config or {})
-                    elapsed = time.monotonic() - start
-                    results.append((url, content, elapsed))
-            return results, http_log, skipped
-        finally:
-            await _shutdown_http(http)
-
-    results, http_log, skipped = asyncio.run(_run())
+    # Convert lib result back to the legacy (url, content, elapsed) tuples
+    # the rest of this handler operates on.
+    results = [(it.url, it.content, it.elapsed_seconds) for it in lib_result.items]
+    http_log = lib_result.http_log
+    skipped = lib_result.skipped
 
     # Save HTTP log and structlog events
     save_http_log(run_dir, http_log)
@@ -2063,15 +2076,6 @@ def feedback_cmd(
 
     cfg = board.configs[name]
 
-    # Gather run quality data for auto-population
-    run = cfg.get("run") or {}
-    scraper_run = cfg.get("scraper_run") or {}
-    monitor_total = run.get("jobs", 0)
-    scraper_total = scraper_run.get("count", 0)
-    run_quality = run.get("quality") or {}
-    scraper_quality = scraper_run.get("quality") or {}
-    coverage_data = {**run_quality, **scraper_quality}
-
     # Map option values to field names
     explicit_quality = {
         "title": title_q,
@@ -2092,99 +2096,95 @@ def feedback_cmd(
         "job_location_type": jlt_notes,
     }
 
-    # When coverage_data is empty, no per-field sample was recorded at all
-    # (e.g. URL-only monitor + ws run scraper crashed). In that case any
-    # synthesized "0/N" coverage misleads reviewers — the agent assessed
-    # quality manually without programmatic sampling. We omit the coverage
-    # fraction and skip the absent-auto-population.
-    has_field_data = bool(coverage_data)
-
-    # Build per-field feedback
-    fields_fb: dict[str, dict] = {}
-    for field_name in _FEEDBACK_FIELDS:
-        count = coverage_data.get(field_name, 0)
-        # Use the total from whichever source provided this field's data
-        if field_name in scraper_quality:
-            total = scraper_total or monitor_total
-        else:
-            total = monitor_total or scraper_total
-        coverage = (f"{count}/{total}" if total else "0/0") if has_field_data else ""
-
-        # Determine quality: explicit > auto-populate
-        q = explicit_quality.get(field_name)
-        if q is None and has_field_data and count == 0:
-            q = "absent"
-
-        if q is not None:
-            entry: dict[str, str] = {"quality": q}
-            if coverage:
-                entry["coverage"] = coverage
-            notes = notes_map.get(field_name, "")
-            if notes:
-                entry["notes"] = notes
-            fields_fb[field_name] = entry
-
-    # Require explicit quality for all fields that have coverage (or are required)
-    missing_explicit = []
-    for field_name in _FEEDBACK_FIELDS:
-        if field_name in fields_fb:
+    # Build the lib's per_field shape: only fields the user explicitly
+    # rated; the lib auto-fills "absent" for zero-coverage fields when
+    # field-data is present.
+    per_field: dict[str, dict[str, str]] = {}
+    for fname, q in explicit_quality.items():
+        if q is None:
             continue
-        count = coverage_data.get(field_name, 0)
-        if field_name in scraper_quality:
-            total = scraper_total or monitor_total
-        else:
-            total = monitor_total or scraper_total
-        if count > 0 or field_name in _REQUIRED_FIELDS:
-            flag = f"--{field_name.replace('_', '-')}"
-            if count > 0:
-                missing_explicit.append(f"{flag} ({count}/{total} jobs)")
+        entry = {"quality": q}
+        if notes_map.get(fname):
+            entry["notes"] = notes_map[fname]
+        per_field[fname] = entry
+
+    # Ensure the lib reads from the right slot: temporarily set active.
+    prev_active = board.active_config
+    board.active_config = name
+
+    # Run the lib. It validates verdict, completeness, and tiering, then
+    # writes ``feedback`` into the slot via the BoardBackedClaimKV.
+    from src.workspace.board_claim_kv import BoardBackedClaimKV
+    from src.workspace.lib import (
+        WsConfigInvalid,
+        WsFeedbackIncomplete,
+    )
+    from src.workspace.lib import (
+        feedback as _lib_feedback,
+    )
+
+    monitor_run = cfg.get("run") or {}
+    scraper_run_data = cfg.get("scraper_run") or {}
+
+    try:
+        asyncio.run(
+            _lib_feedback(
+                BoardBackedClaimKV(board),
+                verdict=verdict,
+                per_field=per_field,
+                verdict_notes=verdict_notes,
+                monitor_run=monitor_run,
+                scraper_run=scraper_run_data,
+            )
+        )
+    except WsFeedbackIncomplete:
+        # Restore active pointer and render the legacy CLI message with
+        # exact flag formatting (--employment-type, etc.) and per-field
+        # coverage hint.
+        board.active_config = prev_active
+        run = cfg.get("run") or {}
+        scraper_run_for_msg = cfg.get("scraper_run") or {}
+        monitor_total = run.get("jobs", 0)
+        scraper_total = scraper_run_for_msg.get("count", 0)
+        run_quality = run.get("quality") or {}
+        scraper_quality = scraper_run_for_msg.get("quality") or {}
+        coverage_data = {**run_quality, **scraper_quality}
+
+        missing_explicit: list[str] = []
+        for field_name in _FEEDBACK_FIELDS:
+            if explicit_quality.get(field_name) is not None:
+                continue
+            count = coverage_data.get(field_name, 0)
+            if field_name in scraper_quality:
+                total = scraper_total or monitor_total
             else:
-                missing_explicit.append(flag)
-    if missing_explicit:
+                total = monitor_total or scraper_total
+            # The lib's auto-absent rule fires when coverage_data is non-empty
+            # AND the field has zero coverage — those don't require the user
+            # to pass a flag.
+            if coverage_data and count == 0:
+                continue
+            if count > 0 or field_name in _REQUIRED_FIELDS:
+                flag = f"--{field_name.replace('_', '-')}"
+                if count > 0:
+                    missing_explicit.append(f"{flag} ({count}/{total} jobs)")
+                else:
+                    missing_explicit.append(flag)
         out.die(
             "Explicit quality required for: "
             f"{', '.join(missing_explicit)} "
             "(clean/noisy/unusable/absent)",
         )
+        return  # pragma: no cover
+    except WsConfigInvalid as exc:
+        board.active_config = prev_active
+        out.die(str(exc))
+        return  # pragma: no cover
 
-    # Compute tier summaries
-    def _tier_summary(tier_fields: tuple[str, ...]) -> dict[str, str]:
-        tier_coverage = 0
-        tier_total = 0
-        worst_q = "clean"
-        q_rank = {"clean": 0, "noisy": 1, "unusable": 2, "absent": 3}
-        for f in tier_fields:
-            fb = fields_fb.get(f)
-            if fb:
-                # `coverage` is omitted when no per-field sample existed
-                # (manual quality assessment by the agent). Skip the
-                # numeric aggregation in that case but still propagate
-                # the worst quality rating across the tier.
-                cov = fb.get("coverage")
-                if cov:
-                    c, t = cov.split("/")
-                    tier_coverage += int(c)
-                    tier_total += int(t)
-                if q_rank.get(fb["quality"], 0) > q_rank.get(worst_q, 0):
-                    worst_q = fb["quality"]
-        return {"coverage": f"{tier_coverage}/{tier_total}", "quality": worst_q}
+    # Restore the previous active pointer (feedback should not change it).
+    board.active_config = prev_active
 
-    feedback_data = {
-        "fields": fields_fb,
-        "required": _tier_summary(_REQUIRED_FIELDS),
-        "important": _tier_summary(_IMPORTANT_FIELDS),
-        "optional": _tier_summary(
-            tuple(
-                f
-                for f in _FEEDBACK_FIELDS
-                if f not in _REQUIRED_FIELDS and f not in _IMPORTANT_FIELDS
-            )
-        ),
-        "verdict": verdict,
-        "verdict_notes": verdict_notes,
-    }
-
-    cfg["feedback"] = feedback_data
+    feedback_data = cfg.get("feedback", {})
     action_log.append_to_list(
         board.log,
         "feedback",
@@ -2203,7 +2203,7 @@ def feedback_cmd(
         qual = tier.get("quality", "?")
         out.plain("feedback", f"  {tier_name}: {cov} ({qual})")
     # Warn if description rated clean but samples are suspiciously short
-    desc_fb = fields_fb.get("description", {})
+    desc_fb = feedback_data.get("fields", {}).get("description", {})
     if desc_fb.get("quality") == "clean":
         scraper_run = cfg.get("scraper_run") or {}
         run_data_fb = cfg.get("run") or {}
