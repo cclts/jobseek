@@ -43,7 +43,7 @@ msgstr "(ouvre dans un nouvel onglet)"
 #. Button to show remaining collapsed locations
 #. js-lingui-explicit-id
 #. placeholder {0}: locations.length - LOCATIONS_COLLAPSED
-#: src/components/search/job-detail-dialog.tsx:372
+#: src/components/search/job-detail-dialog.tsx:359
 msgid "search.detail.showMoreLocations"
 msgstr "{0} de plus"
 
@@ -54,25 +54,25 @@ msgstr "{count, plural, one {# poste ouvert} other {# postes ouverts}}"
 
 #. Active posting count on each similar-company card
 #. js-lingui-explicit-id
-#: src/components/company/similar-company-card.tsx:59
+#: src/components/company/similar-company-card.tsx:42
 msgid "company.similar.positionCount"
 msgstr "{count, plural, one {# poste ouvert} other {# postes ouverts}}"
 
 #. Stat label on a WatchlistCard mention card — pluralized 'active job' / 'active jobs'. {count} is the integer count.
 #. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:373
+#: src/components/blog/MdxMentions.tsx:358
 msgid "blog.mention.watchlist.activeJobsLabel"
 msgstr "{count, plural, one {offre active} other {offres actives}}"
 
 #. Stat label on a CompanyCard mention card — pluralized 'active posting' / 'active postings'. {count} is the integer count.
 #. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:305
+#: src/components/blog/MdxMentions.tsx:290
 msgid "blog.mention.company.activePostingsLabel"
 msgstr "{count, plural, one {offre active} other {offres actives}}"
 
 #. Stat label on a WatchlistCard mention card — pluralized 'company' / 'companies'. {count} is the integer count.
 #. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:362
+#: src/components/blog/MdxMentions.tsx:347
 msgid "blog.mention.watchlist.companiesLabel"
 msgstr "{count, plural, one {entreprise} other {entreprises}}"
 
@@ -104,19 +104,19 @@ msgstr "{countText} chez {name}. {description}"
 
 #. Reading-time label shown in the blog post byline. {minutes} is the integer minute count.
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/blog/[slug]/page.tsx:135
+#: app/[lang]/(public)/blog/[slug]/page.tsx:136
 msgid "blog.post.readingTime"
 msgstr "{minutes, plural, one {# min de lecture} other {# min de lecture}}"
 
 #. Employee count range shown on company page header
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-head.tsx:31
+#: app/[lang]/(app)/company/[slug]/company-head.tsx:30
 msgid "company.head.employees"
 msgstr "{range} employés"
 
 #. Meta line on a CompanyCard mention card — '{range} employees' (range like '11–50' or '5k–10k')
 #. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:283
+#: src/components/blog/MdxMentions.tsx:268
 msgid "blog.mention.company.employeesCount"
 msgstr "{range} salariés"
 
@@ -217,7 +217,7 @@ msgstr "actifs"
 
 #. Active matches label on company card
 #. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:131
+#: src/components/search/company-card.tsx:117
 msgid "search.card.active"
 msgstr "actif"
 
@@ -300,16 +300,16 @@ msgstr "Toutes les langues"
 msgid "settings.general.jobLanguages.all"
 msgstr "Toutes les langues"
 
-#. Button to open all-locations modal on company page
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:342
-msgid "company.page.allLocations"
-msgstr "Tous les lieux"
-
 #. Title for the all-locations modal on company page
 #. js-lingui-explicit-id
 #: src/components/search/location-modal.tsx:145
 msgid "company.locationModal.title"
+msgstr "Tous les lieux"
+
+#. Button to open all-locations modal on company page
+#. js-lingui-explicit-id
+#: src/components/search/filter-bar.tsx:342
+msgid "company.page.allLocations"
 msgstr "Tous les lieux"
 
 #. Link to sign-in page from sign-up
@@ -375,7 +375,7 @@ msgstr "Statistiques des candidatures"
 
 #. Application tracker section heading in job detail
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:260
+#: src/components/search/job-detail-dialog.tsx:247
 msgid "search.detail.applicationTracker"
 msgstr "Suivi de candidature"
 
@@ -399,7 +399,7 @@ msgstr "Postulé"
 
 #. Application tracker status: applied
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:462
+#: src/components/search/job-detail-dialog.tsx:449
 msgid "search.tracker.applied"
 msgstr "Postulé"
 
@@ -435,7 +435,7 @@ msgstr "Appliquer"
 
 #. Apply button linking to original job posting
 #. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:305
+#: src/components/my-jobs/my-job-detail-panel.tsx:292
 msgid "search.detail.apply"
 msgstr "Postuler"
 
@@ -512,12 +512,6 @@ msgstr "Retour en haut"
 msgid "myJobs.interviewType.behavioral"
 msgstr "Comportemental"
 
-#. Back-to-index link at the top of a blog post (rendered as '← {label}')
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/blog/[slug]/page.tsx:130
-msgid "blog.post.backToIndex"
-msgstr "Blog"
-
 #. Document title (<title>) for the blog index page
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:24
@@ -528,6 +522,12 @@ msgstr "Blog"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:69
 msgid "blog.index.heading"
+msgstr "Blog"
+
+#. Back-to-index link at the top of a blog post (rendered as '← {label}')
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/[slug]/page.tsx:131
+msgid "blog.post.backToIndex"
 msgstr "Blog"
 
 #. Nav link: Blog
@@ -739,7 +739,7 @@ msgstr "Fermé"
 
 #. Label for inactive/closed job postings on company card
 #. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:154
+#: src/components/search/company-card.tsx:140
 msgid "search.card.closed"
 msgstr "Fermé"
 
@@ -808,7 +808,7 @@ msgstr "Entreprise"
 
 #. Eyebrow label on a CompanyCard mention card (the small uppercase tag above the company name)
 #. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:315
+#: src/components/blog/MdxMentions.tsx:300
 msgid "blog.mention.company.eyebrow"
 msgstr "Entreprise"
 
@@ -863,14 +863,14 @@ msgstr "Contact"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:18
-msgid "license.toc.title"
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
 msgstr "Sommaire"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
+#: src/components/LicenseContent.tsx:18
+msgid "license.toc.title"
 msgstr "Sommaire"
 
 #. Button to continue to app after verification
@@ -1120,7 +1120,7 @@ msgstr "Détails"
 
 #. Collapsible section heading for extracted job details
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:400
+#: src/components/search/job-detail-dialog.tsx:387
 msgid "search.detail.details"
 msgstr "Détails"
 
@@ -1307,7 +1307,7 @@ msgstr "Expérience"
 
 #. Breadcrumb label for the Explore page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-head.tsx:55
+#: app/[lang]/(app)/company/[slug]/company-head.tsx:54
 msgid "breadcrumb.explore"
 msgstr "Explorer"
 
@@ -1416,14 +1416,14 @@ msgstr "Filtre"
 #. Tooltip prefix for clickable filter pills, followed by the value name
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:116
-#: src/components/search/job-detail-dialog.tsx:313
-#: src/components/search/job-detail-dialog.tsx:391
+#: src/components/search/job-detail-dialog.tsx:300
+#: src/components/search/job-detail-dialog.tsx:378
 msgid "search.detail.filterByPrefix"
 msgstr "Filtrer par"
 
 #. Tooltip for salary filter pill
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:239
+#: src/components/search/job-detail-dialog.tsx:226
 msgid "search.detail.filterBySalary"
 msgstr "Filtrer par cette fourchette salariale"
 
@@ -1509,13 +1509,13 @@ msgstr "Mot de passe oublié ?"
 
 #. Meta line on a CompanyCard mention card — 'founded {year}'
 #. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:293
+#: src/components/blog/MdxMentions.tsx:278
 msgid "blog.mention.company.foundedYear"
 msgstr "fondée en {year}"
 
 #. Founded year shown on company page header
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-head.tsx:41
+#: app/[lang]/(app)/company/[slug]/company-head.tsx:40
 msgid "company.head.founded"
 msgstr "Fondée en {year}"
 
@@ -1654,7 +1654,7 @@ msgstr "Responsable RH"
 
 #. Breadcrumb label for the site root
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-head.tsx:50
+#: app/[lang]/(app)/company/[slug]/company-head.tsx:49
 msgid "breadcrumb.home"
 msgstr "Accueil"
 
@@ -1766,13 +1766,13 @@ msgstr "sur la dernière année"
 
 #. Yearly matches label on company card
 #. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:133
+#: src/components/search/company-card.tsx:119
 msgid "search.card.yearCount"
 msgstr "au cours de la dernière année"
 
 #. Stat label on a WatchlistCard mention card — 'in the past year' (year-to-date jobs counted by the watchlist filters)
 #. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:384
+#: src/components/blog/MdxMentions.tsx:369
 msgid "blog.mention.watchlist.yearJobsLabel"
 msgstr "au cours de la dernière année"
 
@@ -1846,7 +1846,7 @@ msgstr "En entretien"
 
 #. Application tracker status: interviewing
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:463
+#: src/components/search/job-detail-dialog.tsx:450
 msgid "search.tracker.interviewing"
 msgstr "En entretien"
 
@@ -2115,16 +2115,16 @@ msgstr "Découvrez comment Job Seek scrape les pages carrières de Workday, Gree
 msgid "home.hero.secondaryCta"
 msgstr "En savoir plus"
 
-#. Section header for seniority suggestions in search bar
-#. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:638
-msgid "search.bar.level"
-msgstr "Niveau"
-
 #. Label for seniority/level filter in advanced search
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx:154
 msgid "search.advanced.level"
+msgstr "Niveau"
+
+#. Section header for seniority suggestions in search bar
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx:638
+msgid "search.bar.level"
 msgstr "Niveau"
 
 #. js-lingui-explicit-id
@@ -2194,16 +2194,16 @@ msgstr "Lieu"
 msgid "search.advanced.location"
 msgstr "Lieu"
 
+#. Locations heading in job detail
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:312
+msgid "search.detail.locations"
+msgstr "Lieux"
+
 #. Section header for location suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:708
 msgid "search.bar.locations"
-msgstr "Lieux"
-
-#. Locations heading in job detail
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:325
-msgid "search.detail.locations"
 msgstr "Lieux"
 
 #. Login button label
@@ -2478,7 +2478,7 @@ msgstr "Aucun secteur trouvé."
 
 #. Empty state when no jobs match the time range
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:256
+#: src/components/watchlist/watchlist-job-list.tsx:243
 msgid "watchlists.jobList.empty"
 msgstr "Aucune offre trouvée."
 
@@ -2578,7 +2578,7 @@ msgstr "Non. Nous ne vendons, ne louons ni ne partageons vos données à des fin
 
 #. Application tracker status: not applied
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:461
+#: src/components/search/job-detail-dialog.tsx:448
 msgid "search.tracker.notApplied"
 msgstr "Non postulé"
 
@@ -2614,7 +2614,7 @@ msgstr "Oct"
 
 #. Application tracker status: offer
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:464
+#: src/components/search/job-detail-dialog.tsx:451
 msgid "search.tracker.offer"
 msgstr "Offre"
 
@@ -2751,26 +2751,26 @@ msgstr "Notre position sur l'automatisation"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:22
-msgid "license.toc.overview"
-msgstr "Aperçu"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:27
 msgid "indexing.toc.overview"
 msgstr "Aperçu"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:19
-msgid "license.toc.ariaLabel"
-msgstr "Sommaire de la page"
+#: src/components/LicenseContent.tsx:22
+msgid "license.toc.overview"
+msgstr "Aperçu"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:24
 msgid "indexing.toc.ariaLabel"
+msgstr "Sommaire de la page"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:19
+msgid "license.toc.ariaLabel"
 msgstr "Sommaire de la page"
 
 #. Heading shown on the 404 page
@@ -3117,7 +3117,7 @@ msgstr "Refusé"
 
 #. Application tracker status: rejected
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:465
+#: src/components/search/job-detail-dialog.tsx:452
 msgid "search.tracker.rejected"
 msgstr "Refusé"
 
@@ -3159,7 +3159,7 @@ msgstr "Supprimer le lieu"
 
 #. Synthetic dropdown row that lets the user request a company that's not in the catalog
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:811
+#: src/components/search/search-bar.tsx:800
 msgid "search.bar.request"
 msgstr "Demander \\\"{trimmedInput}\\\""
 
@@ -3308,7 +3308,7 @@ msgstr "Enregistre tes filtres pour des recherches rapides sans tout retaper à 
 
 #. Save job aria label
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:218
+#: src/components/watchlist/watchlist-job-list.tsx:205
 msgid "watchlists.jobList.save"
 msgstr "Sauvegarder l'offre"
 
@@ -3441,7 +3441,7 @@ msgstr "Recherchez des millions d'offres scrapées directement depuis des millie
 
 #. Back-to-search link on company page header
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-head.tsx:60
+#: app/[lang]/(app)/company/[slug]/company-head.tsx:59
 msgid "company.head.backToSearch"
 msgstr "Résultats de recherche"
 
@@ -3593,16 +3593,16 @@ msgstr "Paramètres"
 msgid "home.features.s3.p3.title"
 msgstr "Partager avec tout le monde"
 
-#. Button to collapse location list
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:368
-msgid "search.detail.showLessLocations"
-msgstr "Afficher moins"
-
 #. Collapse location pill list
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx:351
 msgid "company.page.showLess"
+msgstr "Afficher moins"
+
+#. Button to collapse location list
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:355
+msgid "search.detail.showLessLocations"
 msgstr "Afficher moins"
 
 #. Aria label to show password
@@ -3878,16 +3878,16 @@ msgstr "System Design"
 msgid "myJobs.interviewType.technical"
 msgstr "Technique"
 
+#. Technologies sub-heading in details section
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:397
+msgid "search.detail.technologies"
+msgstr "Technologies"
+
 #. Section header for technology suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:673
 msgid "search.bar.technologies"
-msgstr "Technologies"
-
-#. Technologies sub-heading in details section
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:410
-msgid "search.detail.technologies"
 msgstr "Technologies"
 
 #. Add technology filter
@@ -4103,7 +4103,7 @@ msgstr "Listes de suivi illimitées, alertes email sur les nouveaux résultats"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:217
+#: src/components/watchlist/watchlist-job-list.tsx:204
 msgid "watchlists.jobList.unsave"
 msgstr "Retirer l'offre"
 
@@ -4216,7 +4216,7 @@ msgstr "Appel vidéo"
 
 #. Link to the original job posting
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:199
+#: src/components/search/job-detail-dialog.tsx:186
 msgid "search.detail.viewPosting"
 msgstr "Voir l'offre"
 
@@ -4234,7 +4234,7 @@ msgstr "En attente de la fin de votre agent…"
 
 #. Eyebrow label on a WatchlistCard mention card (the small uppercase tag above the watchlist title)
 #. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:393
+#: src/components/blog/MdxMentions.tsx:378
 msgid "blog.mention.watchlist.eyebrow"
 msgstr "Watchlist"
 
@@ -4386,7 +4386,7 @@ msgstr "Nous utilisons quelques services tiers pour la connexion, l’hébergeme
 
 #. Secondary line under the Request <query> dropdown row
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:818
+#: src/components/search/search-bar.tsx:807
 msgid "search.bar.request.subtext"
 msgstr "Nous commencerons à la suivre"
 
@@ -4502,6 +4502,12 @@ msgstr "Vous pouvez accélérer en demandant à votre agent IA de l'effectuer vi
 #: src/components/LicenseContent.tsx:53
 msgid "license.code.summary"
 msgstr "Tu peux utiliser, modifier et redistribuer le code dans des produits personnels ou commerciaux à condition d'inclure la mention de droit d'auteur et de licence."
+
+#. Heading above the 'you may also be interested in' cross-link block at the bottom of a blog post
+#. js-lingui-explicit-id
+#: src/components/blog/RelatedPosts.tsx:42
+msgid "blog.post.relatedPosts.heading"
+msgstr "Vous pourriez également être intéressé par"
 
 #. CC license summary
 #. js-lingui-explicit-id
