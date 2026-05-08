@@ -1,6 +1,7 @@
 "use server";
 
 import { after } from "next/server";
+import { updateTag } from "next/cache";
 import { eq, and, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -10,7 +11,8 @@ import {
 } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { getViewerLanguages } from "@/lib/viewer";
-import { cached } from "@/lib/cache";
+import { cached, invalidate } from "@/lib/cache";
+import { watchlistCacheTag } from "@/lib/cache-tags";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import { generateUniqueSlug } from "@/lib/watchlist-slug";
 import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/constants";
@@ -140,6 +142,22 @@ export async function createWatchlist(params: {
   const isPublic = params.isPublic ?? true;
   const mergedFilters = { anyCompany: true, ...params.filters };
   const trivial = isTrivialWatchlist(mergedFilters, params.companyIds.length);
+
+  // Cache invalidation runs unconditionally for public watchlists
+  // (even trivial ones): if the URL was visited before the watchlist
+  // existed, the page-level `'use cache'` may hold a null-detail
+  // noindex render that needs busting. Trivial watchlists don't go
+  // into Typesense / IndexNow (those flows are gated on !trivial).
+  if (isPublic) {
+    after(async () => {
+      try {
+        await _invalidateWatchlistCaches(userId, [slug]);
+      } catch (err) {
+        console.error("[createWatchlist] cache invalidate failed", err);
+      }
+    });
+  }
+
   if (isPublic && !trivial) {
     after(async () => {
       try {
@@ -249,6 +267,14 @@ export async function updateWatchlist(params: {
 
   after(async () => {
     try {
+      // Bust both cache layers so the next read of the page (and its
+      // OG meta + JSON-LD) reflects the edit. Pass both old + new slug:
+      // a rename leaves the old URL pointing at a stale cached entry
+      // until its TTL expires. Privacy toggles + filter/companies edits
+      // also flow through here. See cache-components.md "Layered TTL".
+      const slugsToInvalidate = newSlug !== wl.slug ? [wl.slug, newSlug] : [wl.slug];
+      await _invalidateWatchlistCaches(userId, slugsToInvalidate);
+
       const newCompanyCount = params.companyIds !== undefined
         ? params.companyIds.length
         : await _countWatchlistCompanies(params.watchlistId);
@@ -320,13 +346,14 @@ export async function deleteWatchlist(
 
   await db.delete(watchlist).where(eq(watchlist.id, watchlistId));
 
-  // Typesense delete + IndexNow re-crawl trigger. Both post-mutation
-  // effects share one after() so registration is synchronous in the
-  // request scope. IndexNow only fires if the URL was indexable; the
-  // Typesense delete is idempotent so it runs unconditionally (safe
-  // even when the doc doesn't exist).
+  // Typesense delete + IndexNow re-crawl trigger + Next/Redis cache
+  // invalidation. The page-level `'use cache'` keeps a 1-hour cached
+  // version of the public watchlist page (including OG meta + JSON-LD
+  // ItemList) — without invalidating it, the deleted watchlist remains
+  // visible to crawlers / unfurl previews until TTL expiry.
   after(async () => {
     try {
+      await _invalidateWatchlistCaches(userId, [wl.slug]);
       tsDeleteWatchlist(watchlistId);
       if (wl.isPublic) {
         const owner = await _getOwnerInfo(userId);
@@ -405,6 +432,18 @@ export async function copyWatchlist(
   // in the request scope; the previous detached .then() pattern broke
   // notifyIndexNow because the inner after() lost its request context
   // by the time the chain resolved.
+  // Cache invalidation runs unconditionally (even if trivial) — same
+  // reasoning as `createWatchlist`: a stale null-detail render in the
+  // page-level cache needs busting whether or not the watchlist will
+  // be sitemap-indexed.
+  after(async () => {
+    try {
+      await _invalidateWatchlistCaches(userId, [slug]);
+    } catch (err) {
+      console.error("[copyWatchlist] cache invalidate failed", err);
+    }
+  });
+
   if (!isTrivialWatchlist(sourceFilters, companies.length)) {
     // 1. Upsert the new copy (copies are always public) — unless trivial.
     after(async () => {
@@ -626,8 +665,25 @@ export async function getWatchlistByUserAndSlug(
  * pages, `generateMetadata`, sitemaps). The session-aware variant reads
  * `headers()` via `getSessionUserId()` and tainted the watchlist detail
  * page's ISR — see issue #2244.
+ *
+ * Wrapped in Redis `cached()` (60s TTL) so the same `(userSlug, slug)`
+ * lookup deduplicates across the watchlist page's `generateMetadata`
+ * and body — under cacheComponents each is a separate `'use cache'`
+ * boundary running in its own clean AsyncLocalStorage, so a React-cache
+ * wrapper at the page module scope no longer dedupes them.
  */
 export async function getPublicWatchlistByUserAndSlug(
+  userSlug: string,
+  watchlistSlug: string,
+): Promise<WatchlistDetail | null> {
+  return cached(
+    `public-watchlist:${userSlug}:${watchlistSlug}`,
+    () => _fetchPublicWatchlistByUserAndSlug(userSlug, watchlistSlug),
+    { ttl: 60, skipIf: (r) => r === null },
+  );
+}
+
+async function _fetchPublicWatchlistByUserAndSlug(
   userSlug: string,
   watchlistSlug: string,
 ): Promise<WatchlistDetail | null> {
@@ -1178,7 +1234,7 @@ export async function addCompanyToWatchlist(
   if (!userId) throw new Error("Not authenticated");
 
   const [wl] = await db
-    .select({ userId: watchlist.userId, isPublic: watchlist.isPublic })
+    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
     .from(watchlist)
     .where(eq(watchlist.id, watchlistId))
     .limit(1);
@@ -1190,12 +1246,18 @@ export async function addCompanyToWatchlist(
     .values({ watchlistId, companyId })
     .onConflictDoNothing();
 
-  // Typesense write hook: update company_count if public (fire-and-forget)
+  // The companies array drives the cached page's JSON-LD ItemList,
+  // metadata description ("Jobs at X, Y, Z"), and OG image. Bust the
+  // page cache + Redis layer so the change is visible on the next read.
   if (wl.isPublic) {
-    _countWatchlistCompanies(watchlistId).then((count) => {
-      tsUpdateWatchlistField(watchlistId, { company_count: count });
-    }).catch((err) => {
-      console.error("[addCompanyToWatchlist] Typesense hook failed", err);
+    after(async () => {
+      try {
+        await _invalidateWatchlistCaches(userId, [wl.slug]);
+        const count = await _countWatchlistCompanies(watchlistId);
+        tsUpdateWatchlistField(watchlistId, { company_count: count });
+      } catch (err) {
+        console.error("[addCompanyToWatchlist] post-mutation hook failed", err);
+      }
     });
   }
 
@@ -1209,7 +1271,7 @@ export async function clearWatchlistCompanies(
   if (!userId) throw new Error("Not authenticated");
 
   const [wl] = await db
-    .select({ userId: watchlist.userId, isPublic: watchlist.isPublic })
+    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
     .from(watchlist)
     .where(eq(watchlist.id, watchlistId))
     .limit(1);
@@ -1220,9 +1282,15 @@ export async function clearWatchlistCompanies(
     .delete(watchlistCompany)
     .where(eq(watchlistCompany.watchlistId, watchlistId));
 
-  // Typesense write hook: set company_count to 0 if public (fire-and-forget)
   if (wl.isPublic) {
-    tsUpdateWatchlistField(watchlistId, { company_count: 0 });
+    after(async () => {
+      try {
+        await _invalidateWatchlistCaches(userId, [wl.slug]);
+        tsUpdateWatchlistField(watchlistId, { company_count: 0 });
+      } catch (err) {
+        console.error("[clearWatchlistCompanies] post-mutation hook failed", err);
+      }
+    });
   }
 
   return { ok: true };
@@ -1236,7 +1304,7 @@ export async function removeCompanyFromWatchlist(
   if (!userId) throw new Error("Not authenticated");
 
   const [wl] = await db
-    .select({ userId: watchlist.userId, isPublic: watchlist.isPublic })
+    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
     .from(watchlist)
     .where(eq(watchlist.id, watchlistId))
     .limit(1);
@@ -1252,12 +1320,15 @@ export async function removeCompanyFromWatchlist(
       ),
     );
 
-  // Typesense write hook: update company_count if public (fire-and-forget)
   if (wl.isPublic) {
-    _countWatchlistCompanies(watchlistId).then((count) => {
-      tsUpdateWatchlistField(watchlistId, { company_count: count });
-    }).catch((err) => {
-      console.error("[removeCompanyFromWatchlist] Typesense hook failed", err);
+    after(async () => {
+      try {
+        await _invalidateWatchlistCaches(userId, [wl.slug]);
+        const count = await _countWatchlistCompanies(watchlistId);
+        tsUpdateWatchlistField(watchlistId, { company_count: count });
+      } catch (err) {
+        console.error("[removeCompanyFromWatchlist] post-mutation hook failed", err);
+      }
     });
   }
 
@@ -1721,6 +1792,48 @@ async function _getWatchlistPostingsPostgres(
 }
 
 // ── Helper functions for Typesense write hooks ────────────────────────
+
+/**
+ * Invalidate every cache layer that could be holding a public watchlist's
+ * pre-mutation state: the per-region `'use cache'` page entry (tagged via
+ * `watchlistCacheTag`) AND the Redis-backed `cached("public-watchlist:...")`
+ * SQL fetch. Required for both privacy toggles AND title renames AND
+ * filter/companies edits — without this, the watchlist page (and its OG
+ * meta tags + JSON-LD ItemList) keep showing the pre-edit state for up to
+ * cacheLife.revalidate (1 hour for /[user]/[watchlist]).
+ *
+ * Pass every slug variant that the visitor might hit: the new slug after
+ * a rename AND the old slug (which now 404s but is cached). Also covers
+ * both `username` and `displayUsername` since the public route accepts
+ * either as the user-segment.
+ */
+async function _invalidateWatchlistCaches(
+  userId: string,
+  slugs: string[],
+): Promise<void> {
+  const owner = await _getOwnerInfo(userId);
+  if (!owner) return;
+  const userSlugs = new Set<string>();
+  if (owner.username) userSlugs.add(owner.username);
+  if (owner.displayUsername) userSlugs.add(owner.displayUsername);
+  if (userSlugs.size === 0) return;
+
+  for (const userSlug of userSlugs) {
+    for (const slug of slugs) {
+      // `updateTag` (not `revalidateTag`) — we need immediate eviction
+      // for the privacy / rename / delete flows. `revalidateTag(tag, "hours")`
+      // would only mark the cache entry stale within a 24h SWR window:
+      // the next visitor would still see the pre-mutation render.
+      // `updateTag` invalidates so the next read fetches fresh DB data.
+      updateTag(watchlistCacheTag(userSlug, slug));
+      try {
+        await invalidate(`public-watchlist:${userSlug}:${slug}`);
+      } catch (err) {
+        console.error("[invalidateWatchlistCaches] redis invalidate failed", err);
+      }
+    }
+  }
+}
 
 /** Fetch owner info for Typesense watchlist doc + IndexNow URL construction. */
 async function _getOwnerInfo(

@@ -5,12 +5,17 @@ import { locales } from "@/lib/i18n";
 export const alt = "Company jobs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// 30 days. Company logo/name/description change far less often than
-// daily — a 1-day revalidate multiplied by ~16k (slug × locale) cells
-// churned OG regenerations against the crawl surge. Bump high; a
-// rename/rebrand still propagates within a month, and deploys purge
-// the cache anyway.
-export const revalidate = 2592000;
+// Long-cache (30 days) via explicit `Cache-Control` headers on the
+// ImageResponse — `'use cache'` doesn't apply (ImageResponse is a
+// class instance, not serializable for the runtime cache), and Next.js
+// doesn't auto-cache OG images outside the prerender window. Vercel
+// purges the CDN on every deploy so `immutable` is safe.
+// `generateStaticParams` below covers the top-N companies at build
+// time so social-card crawl surges land on the prebake; long-tail
+// slugs render once per region per 30 days.
+const CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
+};
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -31,14 +36,27 @@ import { join } from "node:path";
 const OG_PRERENDER_TOP_N = 200;
 
 /**
- * Pick the top-N companies to prerender. Returns `[]` on any error so a
- * build environment without Typesense access (or a transient outage)
- * never fails the build — Next.js will fall back to dynamic rendering on
- * first request, identical to the existing behavior.
+ * Pick the top-N companies to prerender. Fails the build only when
+ * Typesense is configured AND unreachable on a production build —
+ * that's the failure mode where a silent zero-prerender translates
+ * into every Twitter/LinkedIn/Slack crawl cold-starting a function.
+ *
+ * Soft-fails (returns `[]` + warn) in two other cases:
+ *   1. Typesense isn't configured (preview deploys without secrets,
+ *      local builds without `.env.local`).
+ *   2. Typesense responded successfully but with 0 results — could be
+ *      a legitimately empty index (during reindex / fresh deploy) or
+ *      an `active_posting_count:>0` filter mismatch. Failing the
+ *      production deploy on a transient empty-index state would couple
+ *      Vercel deploy availability to a specific Typesense data shape.
+ *
+ * See #2835 critic rounds 2 and 3.
  */
 export async function generateStaticParams(): Promise<
   { lang: string; slug: string }[]
 > {
+  const isProductionBuild = process.env.VERCEL_ENV === "production";
+  const hasTypesenseConfig = !!process.env.TYPESENSE_HOST;
   try {
     const { getSearchClient } = await import(
       "@/lib/search/typesense-client"
@@ -56,11 +74,23 @@ export async function generateStaticParams(): Promise<
     const slugs = (result.hits ?? [])
       .map((h) => (h.document as Record<string, unknown>).slug)
       .filter((s): s is string => typeof s === "string");
+    if (slugs.length === 0) {
+      console.warn(
+        "[opengraph-image] generateStaticParams: 0 companies returned from " +
+          "Typesense — index empty or filter mismatch. Long-tail OG generation " +
+          "will fall back to per-request rendering.",
+      );
+    }
     return slugs.flatMap((slug) => locales.map((lang) => ({ lang, slug })));
   } catch (err) {
-    // Misconfigured TYPESENSE_* in build env, transient Typesense outage,
-    // etc. Don't fail the build — but log so a silent zero-prerender is
-    // visible in CI output and observable as a deploy regression.
+    if (isProductionBuild && hasTypesenseConfig) {
+      // Typesense was configured but the call threw (network error,
+      // misconfigured secret, etc.) on a production build. Fail loud —
+      // silently shipping zero prerender hides a real outage.
+      throw err;
+    }
+    // Typesense not configured (preview without secrets) OR local build —
+    // log loudly but don't fail; dynamic OG rendering still works.
     console.warn(
       "[opengraph-image] generateStaticParams: skipping prerender",
       err,
@@ -80,7 +110,10 @@ export default async function OgImage({
   params: Promise<{ lang: string; slug: string }>;
 }) {
   const { slug, lang } = await params;
-  const company = await getCompanyBySlug(slug, lang);
+  const [company, fontData] = await Promise.all([
+    getCompanyBySlug(slug, lang),
+    fontPromise,
+  ]);
   if (!company) {
     return new ImageResponse(
       <div
@@ -98,11 +131,14 @@ export default async function OgImage({
       >
         Not Found
       </div>,
-      { ...size },
+      {
+        ...size,
+        headers: CACHE_HEADERS,
+        fonts: [{ name: "JetBrains Mono", data: fontData, weight: 700, style: "normal" }],
+      },
     );
   }
 
-  const fontData = await fontPromise;
   const hasIcon = company.icon && company.icon.startsWith("http");
 
   return new ImageResponse(
@@ -183,6 +219,7 @@ export default async function OgImage({
     </div>,
     {
       ...size,
+      headers: CACHE_HEADERS,
       fonts: [
         {
           name: "JetBrains Mono",

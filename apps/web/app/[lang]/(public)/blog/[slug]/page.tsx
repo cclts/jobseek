@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { compileMDX } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
+import { cacheLife, cacheTag } from "next/cache";
 import { getI18n } from "@lingui/react/server";
-import { initI18nForPage, isLocale, defaultLocale } from "@/lib/i18n";
+import { initI18nForPage, isLocale, defaultLocale, ogLocale } from "@/lib/i18n";
+import { blogPostCacheTag } from "@/lib/cache-tags";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import {
@@ -17,16 +19,11 @@ import {
 import { buildMdxComponents } from "@/components/blog/MdxMentions";
 import { RelatedPosts } from "@/components/blog/RelatedPosts";
 
-// Posts are static content authored at PR-merge cadence; ISR window is
-// cosmetic. Build-time prerender via `generateStaticParams` covers
-// every published post.
-export const revalidate = 86400;
-// English-only initially; once a post has translated MDX siblings the
-// per-post hreflang map can be widened in `generateMetadata`. For now
-// only `/en/blog/{slug}` is the canonical surface — the localized
-// paths exist (`generateStaticParams` emits all 4 locales for routing
-// completeness) but redirect intent flows through the canonical EN URL.
-export const dynamicParams = false;
+// Posts are static content authored at PR-merge cadence — build-time
+// prerender via `generateStaticParams` covers every published post.
+// Non-existent slugs fall through to `getBlogPost` returning null and
+// `notFound()` firing in the page body. (`dynamicParams = false` would
+// be the more direct route, but it's incompatible with cacheComponents.)
 
 type Props = {
   params: Promise<{ lang: string; slug: string }>;
@@ -42,7 +39,10 @@ export async function generateStaticParams(): Promise<{ lang: string; slug: stri
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  "use cache";
+  cacheLife({ revalidate: 86400 });
   const { lang, slug } = await params;
+  cacheTag(blogPostCacheTag(slug));
   const locale = isLocale(lang) ? lang : defaultLocale;
   const post = await getBlogPost(slug, locale);
   if (!post) return {};
@@ -58,6 +58,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: post.title,
     description: post.description,
     alternates: buildAlternates(`/blog/${slug}`, locale, availableLocales),
+    // No `images` override — the per-post `opengraph-image.tsx` sibling
+    // generates a card with title + date + author. Setting `images`
+    // here would bypass the file-convention auto-discovery.
     openGraph: {
       title: post.title,
       description: post.description,
@@ -66,6 +69,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: post.datePublished,
       modifiedTime: post.dateModified,
       authors: [post.author],
+      locale: ogLocale(locale),
+      alternateLocale: availableLocales
+        .filter((l) => l !== locale)
+        .map((l) => ogLocale(l)),
     },
   };
 }
@@ -116,9 +123,12 @@ function formatDate(iso: string, locale: string): string {
 }
 
 export default async function BlogPostPage({ params }: Props) {
+  "use cache";
+  cacheLife({ revalidate: 86400 });
   const locale = await initI18nForPage(params);
   const i18n = getI18n()!;
   const { slug } = await params;
+  cacheTag(blogPostCacheTag(slug));
   const post = await getBlogPost(slug, locale);
   if (!post) notFound();
 

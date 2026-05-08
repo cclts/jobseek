@@ -2,12 +2,18 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getBlogPost, listBlogSlugs } from "@/lib/blog";
+import { isLocale } from "@/lib/i18n";
 
 export const alt = "Job Seek blog post";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// Posts rarely change after publish; deploys purge anyway.
-export const revalidate = 2592000;
+// 30-day cache via explicit `Cache-Control` headers on the
+// ImageResponse — `'use cache'` doesn't apply (ImageResponse is a
+// class instance). Vercel purges the CDN on every deploy so
+// `immutable` is safe; posts rarely change after publish anyway.
+const CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
+};
 
 export async function generateStaticParams(): Promise<{ lang: string; slug: string }[]> {
   const slugs = await listBlogSlugs();
@@ -23,10 +29,13 @@ const fontPromise = readFile(
 export default async function OgImage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ lang: string; slug: string }>;
 }) {
-  const { slug } = await params;
-  const post = await getBlogPost(slug);
+  const { lang, slug } = await params;
+  // Pass the locale so the per-locale MDX sibling (if any) wins over
+  // the English canonical — `/de/blog/<slug>/opengraph-image-...` then
+  // shows German-translated title + description, not the EN fallback.
+  const post = await getBlogPost(slug, isLocale(lang) ? lang : undefined);
   const fontData = await fontPromise;
 
   if (!post) {
@@ -48,6 +57,7 @@ export default async function OgImage({
       </div>,
       {
         ...size,
+        headers: CACHE_HEADERS,
         fonts: [{ name: "JetBrains Mono", data: fontData, weight: 700, style: "normal" }],
       },
     );
@@ -117,6 +127,7 @@ export default async function OgImage({
     </div>,
     {
       ...size,
+      headers: CACHE_HEADERS,
       fonts: [
         {
           name: "JetBrains Mono",

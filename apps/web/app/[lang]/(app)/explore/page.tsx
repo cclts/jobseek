@@ -1,29 +1,29 @@
 import type { Metadata } from "next";
-import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { cacheLife } from "next/cache";
+import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { fetchExploreDefaults } from "@/lib/actions/explore-data";
 import { ExploreContent } from "./explore-content";
 
-// ISR: prerender per locale and revalidate every 60s. The actual
-// data is fetched server-side via ``fetchExploreDefaults`` (the
-// anonymous, no-filter case) and embedded in the prerendered HTML
-// as ``initialData``. ExploreContent re-fetches a personalized
-// variant client-side only when the ``logged_in`` hint cookie or a
-// filter searchParam is present — anonymous no-filter visitors
-// get a pure CDN cache hit with no Vercel function invocation.
+// Cached for 60s. The anonymous, no-filter explore page is rendered
+// server-side via `fetchExploreDefaults` and embedded as `initialData`.
+// `ExploreContent` is a client component that re-fetches a personalized
+// variant only when the `logged_in` hint cookie or a filter searchParam
+// is present, so anonymous no-filter visitors hit the static prerender
+// without triggering a Vercel function invocation. See #2640 + #2243.
 //
-// IMPORTANT: do NOT add ``searchParams`` to Props or read
-// ``headers()`` / ``cookies()`` here. The ISR test guard at
-// ``apps/web/app/__tests__/isr-routes.test.ts`` enforces this — see
-// #2640 + #2243.
-export const revalidate = 60;
+// Do NOT add `searchParams` to Props or read `headers()`/`cookies()`
+// here — that would force the page out of the cached path on every
+// request and reintroduce the regression.
 
 type Props = {
   params: Promise<{ lang: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  "use cache";
+  cacheLife({ revalidate: 60 });
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
@@ -43,11 +43,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${siteConfig.url}/${locale}/explore`,
       type: "website",
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
     },
   };
 }
 
 export default async function AppPage({ params }: Props) {
+  "use cache";
+  cacheLife({ revalidate: 60 });
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const initialData = await fetchExploreDefaults({ locale });

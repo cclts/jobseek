@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
+import { cacheLife, cacheTag } from "next/cache";
+import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
+import { companyCacheTag } from "@/lib/cache-tags";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
@@ -7,20 +9,25 @@ import { CompanyHead } from "./company-head";
 import { CompanyContent } from "./company-content";
 import { SimilarSection } from "./similar-section";
 
-export const revalidate = 600; // ISR: cache metadata for 10 minutes
-
 type Props = {
   params: Promise<{ lang: string; slug: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  "use cache";
+  cacheLife({ revalidate: 600 });
   const { slug, lang } = await params;
+  cacheTag(companyCacheTag(slug));
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [company, { i18n }] = await Promise.all([
     getCompanyBySlug(slug, locale),
     loadCatalog(locale),
   ]);
-  if (!company) return {};
+  // No company = ghost slug (deleted, never existed, typo). Bare `{}`
+  // would let `[lang]/layout.tsx`'s `metadata.title.default` ("Job
+  // Seek") cascade and leave the URL indexable. Tag explicitly as
+  // `noindex,follow` to mirror the watchlist null-detail handling.
+  if (!company) return { robots: { index: false, follow: true } };
 
   const title = i18n._({
     id: "company.meta.title",
@@ -60,11 +67,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // product surface; `follow` keeps PageRank flowing to internal targets
     // (curated watchlists, blog) from any external links pointing here.
     robots: { index: false, follow: true },
+    // No `images` override here — the per-company `opengraph-image.tsx`
+    // sibling generates richer OG cards (logo + name + description + meta
+    // chips) that should win. Setting `images` at the page level would
+    // bypass the file-convention auto-discovery.
     openGraph: {
       title,
       description,
       url: `${siteConfig.url}/${locale}${path}`,
       type: "website",
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
     },
   };
 }
@@ -90,18 +103,23 @@ async function CompanyNotFound() {
 }
 
 export default async function CompanyPageRoute({ params }: Props) {
+  "use cache";
+  cacheLife({ revalidate: 600 });
   const locale = await initI18nForPage(params);
   const { slug } = await params;
+  cacheTag(companyCacheTag(slug));
 
   const company = await getCompanyBySlug(slug, locale);
   if (!company) return <CompanyNotFound />;
 
-  // Note: this page must stay statically prerenderable (revalidate=600).
-  // Anything that reads `searchParams`, `headers()`, `cookies()`, or
-  // session state on the server-render path will silently turn the
-  // route dynamic. The back-link (filter-aware) and similar-companies
-  // strip live in client subtrees that read `useSearchParams()` so the
-  // shell here stays a pure ISR target. See issue #2243.
+  // The page body is `'use cache'`-wrapped (10-minute revalidate) so the
+  // anonymous static shell ships from the per-region cache without
+  // invoking a function on every request. Anything that reads
+  // `searchParams`, `headers()`, `cookies()`, or session state inside
+  // this function would either fail the build or kill the cache. The
+  // back-link (filter-aware) and similar-companies strip live in client
+  // subtrees that read `useSearchParams()` so the shell here stays
+  // cache-friendly. See issue #2243.
   return (
     <div className="space-y-4">
       <CompanyHead company={company} locale={locale} />
